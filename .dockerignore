@@ -1,0 +1,17 @@
+**
+!Dockerfile
+!requirements.txt
+!app/
+!app/*.py
+!app/assets/
+!app/assets/*.css
+!app/assets/*.js
+!app/assets/fonts/
+!app/assets/fonts/*
+!rules/
+!rules/*.md
+!prompts/
+!prompts/*.md
+!connectors.py
+!run_records.py
+!run.py

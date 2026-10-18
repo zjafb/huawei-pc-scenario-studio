@@ -1,0 +1,12 @@
+# Local secrets, private knowledge cache and temporary files
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+*.pyc
+data/private/
+data/whitelist/
+tmp/
+tools/ima-official/
+/华为PC全板块深度知识库_v7/
