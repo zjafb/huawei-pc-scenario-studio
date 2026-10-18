@@ -9,7 +9,7 @@ from .pipeline import Report,FACT_MARK,_valid_output,_article_text,_check,to_tex
 from connectors import ConnectorError,ModelScopeClient,IMAClient,LiveSourceReader
 
 def cache_mode_note():
-    return '本地资料模式：使用已导入的 v7 原件并核对文件清单指纹，资料日期 2026-10-17；未验证远端当前最新。已取消双人签字门槛。'
+    return '本地资料模式：使用已导入的 v7 原件并核对文件清单指纹，资料日期 2026-10-17；未验证远端当前最新。'
 
 def _source_reader(product,images,mode):
     if mode!='live':return None
@@ -68,6 +68,10 @@ def assertion_hits(text):
     hits=[]
     for sentence in re.split(r'[。！？!?；;\n，,]',text):
         for hit in compliance.check_request(sentence):
+            if hit.word=='第一' and not re.search(r'全球|世界|全国|国内|行业|全网|首创',sentence):
+                non_sequence=re.sub(r'第一(?:时间|印象|反应|感觉|学期|件事|道|层|位要考虑|[天次周月年步章节眼条项点件个台部本款])','',sentence)
+                if '第一' not in non_sequence:continue
+            if hit.word=='最好' and re.search(r'^(?:建议|选购时|购买前|到店时)?最好(?:选择|去|亲自|根据)',sentence.strip()):continue
             # Literal words inside ordinary selection advice are not ad claims.
             if hit.category=='无依据对比' and hit.word.startswith('比例'):continue
             if hit.word=='仅需' and re.search(r'仅需(?:要)?(?:基础|日常|简单|文档|网页|办公|查看|确认|准备|填写)',sentence):continue
@@ -82,7 +86,6 @@ def assertion_hits(text):
             prefix=sentence[max(0,start-16):start] if start>=0 else ''
             if re.search(r'不保证|无法|不能|不作|不做|不要|不应|没有|并非|避免|不是|不代表|别问',prefix):continue
             if hit.category in ('无依据对比','绝对化宣传') and re.search(r'(?:问|想知道|关心|纠结|考虑).{0,12}(?:哪款|哪台|哪一款|是否|能否|哪个|什么)',sentence):continue
-            if hit.word=='第一' and re.search(r'第一(?:道|层|反应|印象|位要考虑)',sentence):continue
             hits.append(hit)
         if re.search(r'比(?:传统|普通|同类|上一?代|其他).{0,35}(?:更多|更少|减少|提升|更快|更强)',sentence):
             hits.append(compliance.Hit('无依据对比','产品效果对比','rewrite','资料没有同条件对比证据，不能推导提升或减少',sentence))
@@ -93,6 +96,16 @@ def _evaluate(rep,output,facts,policy,channel):
         rep.status='failed';rep.message='模型输出结构不完整，未展示为成稿。'
         rep.checks.append(_check('模型结构',False,rep.message));return
     rep.article=output.get('article',{});rep.scene_judgement=output.get('scene_judgement',{})
+    # Blank-line separated prose inside one JSON body item is real paragraphing.
+    # Split it before validation rather than rejecting an otherwise valid layout.
+    if channel in ('wechat','xhs'):
+        paragraphs=[]
+        for block in rep.article.get('body',[]):
+            pieces=[p.strip() for p in re.split(r'\n\s*\n',block['text']) if p.strip()]
+            if len(pieces)>1:
+                paragraphs.extend({'text':p,'fact_ids':sorted(set(FACT_MARK.findall(p)))} for p in pieces)
+            else:paragraphs.append(block)
+        rep.article['body']=paragraphs
     rep.strategy=output.get('strategy',{})
     known={f['id']:f for f in facts}
     def canonical(fid):
@@ -249,6 +262,7 @@ def _run_task(*,product='',audience='',scene='',platform='',free_text='',variant
     if not facts:rep.message='当前产品没有可引用的文字资料。';return rep
     system=(catalog.ROOT/'prompts/system_prompt_v2.md').read_text(encoding='utf-8')
     system+='\n本次渠道规则：'+policy['instruction']
+    system+=f'\nJSON 的 body 数组必须至少有 {policy["paragraphs"]} 个独立元素，每个元素对应一段；不要把整篇文章塞进一个 text。'
     system+=f"\n本次篇幅硬约束：{policy['min_chars']}–{policy['max_chars']}字（不含图片图注和来源），不要只写参数。"
     target={'wechat':'1100–1400','xhs':'550–700','moments':'160–210','poster':'90–150'}[channel]
     system+=f'\n建议写到{target}字，标题、导语、正文、CTA和标签都计入总字数；避免逼近上限。FACT_POOL 的 caveat 是写作规则，不能原样抄进正文；只保留真实的参数条件和产品原文脚注。屏幕比例不得推导减少滚动、效率提升，不写任何无依据体验效果。'
@@ -283,7 +297,7 @@ FACT_POOL（所有事实只从这里来，条件脚注必须保留）：\n{json.
             rep.checks=[];rep.rewrite_hits=[]
             if on_progress:on_progress(3,'模型已返回，正在核验引用、数字、营销措辞和渠道结构')
             _evaluate(rep,output,facts,policy,channel)
-            if channel=='wechat' and rep.rewrite_hits:
+            if channel in ('wechat','xhs') and rep.rewrite_hits:
                 cleaned,removed=remove_risky_body_sentences(output,rep.rewrite_hits)
                 if removed:
                     if on_progress:on_progress(3,'已剔除风险句子，正在重新核验整篇文章')

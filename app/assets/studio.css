@@ -50,3 +50,12 @@ html[data-motion=off] *,html[data-motion=off] *:before,html[data-motion=off] *:a
 @media(max-width:760px){.result-heading{flex-direction:column;align-items:flex-start;gap:12px}.result-heading>span{white-space:nowrap}.studio-brand small{font-size:13px}.studio-header{padding:12px 0}.story-card h1{font-size:28px}}
 
 #studio-workspace{flex-wrap:nowrap!important}#brief-column{flex:0 0 33%!important;max-width:400px}#result-column{flex:1 1 0!important}@media(max-width:760px){#brief-column,#result-column{flex:0 0 auto!important;max-width:none;width:100%}}
+
+.gradio-container{max-width:1800px!important;margin:0 auto!important}
+#studio-header,#studio-intro,#workflow,#studio-workspace{width:100%;box-sizing:border-box}
+#audience-field textarea{height:44px!important;min-height:44px!important;max-height:80px!important}
+.result-banner{font-family:var(--font-sans);color:var(--studio-ink);font-size:14px}
+#story-tabs>.tabitem:has(.article-error){min-height:240px}
+.article-empty.article-error{min-height:210px;padding:32px 16px}
+.article-error h3{font-size:27px;margin:0 0 12px}
+@media(min-width:1700px){#studio-workspace{gap:38px}#brief-column{padding:30px!important}.studio-intro{padding:42px 0 30px}}

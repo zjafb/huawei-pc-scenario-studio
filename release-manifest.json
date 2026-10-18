@@ -1,5 +1,5 @@
 {
-  "created_at": "2026-10-18T17:16:31.416459+08:00",
+  "created_at": "2026-10-18T17:19:49.393643+08:00",
   "purpose": "public source only; excludes real knowledge, approvals, credentials and run outputs",
   "configured_credentials_scanned": true,
   "files": [
@@ -55,8 +55,8 @@
     },
     {
       "path": "app/assets/studio.css",
-      "bytes": 17737,
-      "sha256": "cac03970ef4c101b838aff5328299d9997d3cd40401188d7d5094c3186139a74"
+      "bytes": 18391,
+      "sha256": "0dc00177cc1cee481b1fd6b852f042563393b0a71247b327e692ec5738f5b0cc"
     },
     {
       "path": "app/assets/studio.js",
@@ -85,8 +85,8 @@
     },
     {
       "path": "app/full_pipeline.py",
-      "bytes": 26133,
-      "sha256": "6fe737776472551d321cd496e39effbbb735a81dad347508710d2b88b1cc80ac"
+      "bytes": 27246,
+      "sha256": "b6bf3f672df66639babd24b1795fa6c4f470d6246b45d072fc58542180407ff9"
     },
     {
       "path": "app/images.py",
@@ -115,8 +115,8 @@
     },
     {
       "path": "app/ui.py",
-      "bytes": 20979,
-      "sha256": "b35650086aaff7c0e0efedbf99a5522cb4c04a1618f72650074cf7ff15973fc8"
+      "bytes": 21106,
+      "sha256": "e35f482eca7883a4d352b965fb4320fc6a762a67f52340f58abdb19e2d47c1db"
     },
     {
       "path": "app/whitelist.py",
@@ -225,8 +225,8 @@
     },
     {
       "path": "tests/test_full_catalog.py",
-      "bytes": 10052,
-      "sha256": "69ef0172936dde7ede36fa65782722c11ee27a4dee77d98affe63a8537c3780a"
+      "bytes": 10975,
+      "sha256": "cf2a3c7e120f4d7228d33d6e6d46691cee0972091928e576f5ee427dee972c9e"
     },
     {
       "path": "tests/test_images.py",

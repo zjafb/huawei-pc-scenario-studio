@@ -120,7 +120,7 @@ def _section(rep: pl.Report, n: int) -> str:
 
 def rich_article(rep):
     if rep.status not in ('qualified','restricted'):
-        return '<div class="article-empty">本次尚无通过核验的正文。请查看核验结果或补充需求。</div>'
+        return '<div class="article-empty article-error"><h3>这份稿件还需调整。</h3><p>上方已列出本次具体问题。<br>查看“核验素材”后可补充要求并重新生成。</p></div>'
     def esc(value):return html.escape(str(value or '')).replace('\n','<br>')
     def figure(info):
         raw=rep.image_payloads.get(info['id'])
@@ -262,7 +262,7 @@ def build() -> gr.Blocks:
                     variant = gr.Dropdown(['按资料区分','标准版','SE 版','柔光版','非柔光版'],label="产品版本 / 配置",value='按资料区分',allow_custom_value=True,min_width=120)
                     os_name = gr.Dropdown(['按资料区分','HarmonyOS','Windows','Linux'],label="操作系统",value='按资料区分',min_width=120)
                 with gr.Row(elem_classes='pair-row'):
-                    audience = gr.Textbox(label="目标人群", placeholder="例如：大学新生",value='大学新生',min_width=120)
+                    audience = gr.Textbox(label="目标人群", placeholder="例如：大学新生",value='大学新生',min_width=120,lines=1,max_lines=2,elem_id='audience-field')
                     scene = gr.Dropdown(SCENES, label="使用场景", value="开学季",min_width=120)
                 platform = gr.Radio(PLATFORMS, label="发布渠道", value="小红书",elem_id='channel-choice')
                 free_text = gr.Textbox(label="补充说明（可选，也可只写一句话需求）", lines=2)

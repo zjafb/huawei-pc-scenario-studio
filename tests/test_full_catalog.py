@@ -49,6 +49,8 @@ class FullCatalogueChecks(unittest.TestCase):
   self.assertFalse(flow.assertion_hits('新生往往在性能、便携与价格间犹豫。其尺寸与比例对长时间阅读很重要。若仅需基础办公与网页浏览，只有“更适合你当下阶段”的选择。'))
   self.assertFalse(flow.assertion_hits('这样得出的结论更接近真实体验。让店员帮你匹配最合适的配置组合。'))
   self.assertTrue(flow.assertion_hits('这款仅需2999元，价格实惠。这台更适合你。我们真实体验发现性能提升。'))
+  self.assertFalse(flow.assertion_hits('第一时间核对课程要求，最好选择符合自己任务的配置，找店员匹配最合适的配置组合。'))
+  self.assertTrue(flow.assertion_hits('这款电脑行业第一，在第一时间实现行业第一。'))
 
 class FullFlowChecks(unittest.TestCase):
  def setUp(self):
@@ -61,7 +63,7 @@ class FullFlowChecks(unittest.TestCase):
    'body':[{'text':'这款产品的屏幕为 14 英寸 [K001]。到店之前可以整理日常任务清单，体验时按自己的阅读习惯查看界面，再确认具体销售配置。','fact_ids':['K001']}],
    'cta':'欢迎到店查看实物，或留言说说你的具体使用需求。','tags':[]},'images':[],'notes_for_review':[]}
 
- def execute(self,output,**kwargs):
+ def execute(self,output,channel='moments',**kwargs):
   class Model:
    model='SYNTHETIC';stats={'model_requests':0}
    def chat_json(self,*args,**kwargs):
@@ -70,7 +72,7 @@ class FullFlowChecks(unittest.TestCase):
     return copy.deepcopy(output)
   client=Model()
   with patch.object(catalog,'find_product',return_value=self.item),patch.object(catalog,'facts_for',return_value=self.facts),patch.object(catalog,'assets_for',return_value=[self.image]),patch.object(catalog,'read_verified',return_value=(self.raw,self.image['sha256'])):
-   report=flow.run_task(product='SYNTHETIC',scene='门店到访',platform='moments',detail_level='标准',model_client=client,**kwargs)
+   report=flow.run_task(product='SYNTHETIC',scene='门店到访',platform=channel,detail_level='标准',model_client=client,**kwargs)
   return report,client
 
  def test_new_flow_writes_from_source_without_human_signatures(self):
@@ -139,5 +141,15 @@ class FullFlowChecks(unittest.TestCase):
   self.assertEqual([],cleaned['article']['body'])
   report,_=self.execute(cleaned)
   self.assertNotEqual('qualified',report.status)
+
+ def test_xhs_real_blank_line_paragraphs_inside_one_item_are_counted(self):
+  out=copy.deepcopy(self.output)
+  out['article']['title']='测试选购提醒'
+  text=out['article']['body'][0]['text']+'可以提前准备自己的文件与常用外设，到店核对具体配置与实际需求。'
+  out['article']['body']=[{'text':'\n\n'.join([text]*4),'fact_ids':['K001']}]
+  out['article']['tags']=['#选购','#到店','#需求','#型号']
+  report,_=self.execute(out,channel='xhs')
+  self.assertEqual(4,len(report.article['body']))
+  self.assertTrue(next(c for c in report.checks if c['name']=='渠道结构与篇幅')['ok'],report.checks)
 
 if __name__=='__main__':unittest.main()
