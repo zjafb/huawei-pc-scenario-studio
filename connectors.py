@@ -110,15 +110,17 @@ class ModelScopeClient:
             raise ConnectorError("未配置已验证的模型 ID。", kind="missing_model")
 
     def chat(self, messages: list[dict], *, max_tokens: int = 2048,
-             temperature: float = 0.3) -> Completion:
+             temperature: float = 0.3, json_mode: bool = False) -> Completion:
         if not messages:
             raise ConnectorError("模型输入不能为空。", kind="invalid_input")
         self.stats["model_requests"] += 1
+        payload={"model": self.model, "messages": messages, "max_tokens": max_tokens,
+                 "temperature": temperature, "stream": False, "enable_thinking": False}
+        if json_mode:payload['response_format']={'type':'json_object'}
         data = _request_json(
             self.BASE_URL + "/chat/completions",
             {"Authorization": "Bearer " + self._token, "Content-Type": "application/json"},
-            {"model": self.model, "messages": messages, "max_tokens": max_tokens,
-             "temperature": temperature, "stream": False, "enable_thinking": False},
+            payload,
             self.timeout, (self._token,),
         )
         choices = data.get("choices") or []
@@ -131,7 +133,7 @@ class ModelScopeClient:
         return result
 
     def chat_json(self, messages: list[dict], **kwargs) -> dict:
-        text = self.chat(messages, **kwargs).text.strip()
+        text = self.chat(messages, json_mode=True, **kwargs).text.strip()
         if text.startswith("```"):
             text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.I)
             text = re.sub(r"\s*```$", "", text)

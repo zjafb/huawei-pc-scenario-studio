@@ -22,6 +22,13 @@ def ok(data):
 
 
 class ConnectorTests(unittest.TestCase):
+    @patch('connectors._request_json')
+    def test_structured_generation_requests_provider_json_object_mode(self,request):
+        request.return_value={'choices':[{'message':{'content':'{"ok":true}'}}]}
+        result=ModelScopeClient(token='synthetic-token',model='synthetic-model').chat_json([{'role':'user','content':'JSON'}])
+        self.assertEqual({'ok':True},result)
+        self.assertEqual({'type':'json_object'},request.call_args.args[2]['response_format'])
+
     def ima(self, **kwargs):
         return IMAClient(client_id="synthetic-client", api_key="synthetic-key", **kwargs)
 

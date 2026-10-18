@@ -1,5 +1,5 @@
 {
-  "created_at": "2026-10-18T17:03:49.018205+08:00",
+  "created_at": "2026-10-18T17:05:40.244152+08:00",
   "purpose": "public source only; excludes real knowledge, approvals, credentials and run outputs",
   "configured_credentials_scanned": true,
   "files": [
@@ -85,8 +85,8 @@
     },
     {
       "path": "app/full_pipeline.py",
-      "bytes": 23393,
-      "sha256": "2ffc43d2f179a7784cfc1da0cc862762c09b340694416ce3df6c41bd797c337f"
+      "bytes": 23587,
+      "sha256": "e98b9f1fdcfd6179ca03562ccbc25141d2d8bdd6035c07a9171bb648fc5a7b20"
     },
     {
       "path": "app/images.py",
@@ -125,8 +125,8 @@
     },
     {
       "path": "connectors.py",
-      "bytes": 17294,
-      "sha256": "bafcb6daa7fe40e955b4ad5e9bc70e54c0c74249b7b183abc79f555659f8d969"
+      "bytes": 17434,
+      "sha256": "2705905877189112755974842b89fde9d38238eeb2c01df2e3fdd367a7e7589c"
     },
     {
       "path": "docs/acceptance.md",
@@ -215,8 +215,8 @@
     },
     {
       "path": "tests/test_connectors.py",
-      "bytes": 6529,
-      "sha256": "57151de81f68fe3e79d69eb62ebed8cf11b4cb2b15d1e71ace47c60676447f63"
+      "bytes": 7001,
+      "sha256": "b199d9e987e3a39ccc1ce12d1508d354483cd5b8b024e66f0400314428373670"
     },
     {
       "path": "tests/test_evidence_review.py",

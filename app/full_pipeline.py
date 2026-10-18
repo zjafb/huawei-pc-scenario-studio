@@ -259,11 +259,13 @@ FACT_POOL（所有事实只从这里来，条件脚注必须保留）：\n{json.
             _evaluate(rep,output,facts,policy,channel)
         except ConnectorError as error:
             rep.status='failed';rep.message='模型调用失败：'+str(error)
+            rep.checks=[_check('模型输出',False,rep.message)]
             rep.run['model_stats']=dict(getattr(client,'stats',{}));rep.run['failure_kind']=error.kind
             completion=getattr(client,'last_completion',None)
             if completion:rep.run.update(model_raw_output=completion.text,usage=completion.usage,model_request_id=completion.request_id)
-            if error.kind=='invalid_model_json' and attempt==0 and mode=='cache':
-                rep.run['first_attempt']={'status':'failed','reason':'invalid_model_json'}
+            if error.kind=='invalid_model_json' and attempt<2 and mode=='cache':
+                if attempt==0:rep.run['first_attempt']={'status':'failed','reason':'invalid_model_json'}
+                rep.run.setdefault('repair_attempts',[]).append({'status':'failed','reason':'invalid_model_json'})
                 prompt+='\n上次输出不是可解析JSON。重新输出完整JSON对象，字符串换行必须转义，不要加解释或Markdown代码围栏。'
                 continue
             return rep
