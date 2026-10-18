@@ -142,7 +142,7 @@ def _evaluate(rep,output,facts,policy,channel):
     hits=assertion_hits(text)
     # Comparisons often span comma-separated clauses; inspect the whole sentence.
     for sentence in re.split(r'[。！？!?；;\n]',text):
-        if re.search(r'(?:相比|比)(?:传统|普通|同类|上一?代|其他).{0,100}(?:更大|更多|更少|减少|提升|更快|更强)',sentence):
+        if re.search(r'(?:相比|比)(?:传统|普通|常见|同类|上一?代|其他).{0,100}(?:更大|更多|更少|减少|提升|更快|更强|更友好)',sentence):
             hits.append(compliance.Hit('无依据对比','跨分句产品对比','rewrite','未提供同条件比较证据，请删除对比结论',sentence))
     for segment in [rep.article.get(k,'') for k in ('title','lead','cta')]+[b['text'] for b in rep.article.get('body',[])]:
         ids=FACT_MARK.findall(segment)
@@ -159,6 +159,12 @@ def _evaluate(rep,output,facts,policy,channel):
         for number in compliance.UNIT_PATTERN.finditer(segment):
             if _normalize(number.group()) not in _normalize(blob):
                 hits.append(compliance.Hit('无依据数字',number.group(),'block','该段数字单位不在所引用的原文中',segment))
+        for ratio in re.finditer(r'\d+(?:\.\d+)?\s*[:∶]\s*\d+(?:\.\d+)?',segment):
+            if _normalize(ratio.group()).replace('∶',':') not in _normalize(blob).replace('∶',':'):
+                hits.append(compliance.Hit('无依据数字',ratio.group(),'block','该比例不在所引用的原文中，不能从其他机型或常识补入',segment))
+        for claim in ('累眼','上下黑边','阅读长文档更友好'):
+            if claim in segment and claim not in blob:
+                hits.append(compliance.Hit('无依据效果',claim,'rewrite','资料没有这一使用效果的依据，请删去体验推导',segment))
         if re.search(r'\d+\s*(kg|克|g)\b',segment,re.I) and '约' in blob and '约' not in segment:
             hits.append(compliance.Hit('限定条件','约','rewrite','重量原文含约，不能省略',segment))
         if ('sRGB' in segment or 'NTSC' in segment or 'nits' in segment) and '典型值' in blob and '典型值' not in segment:

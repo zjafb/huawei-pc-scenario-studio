@@ -158,4 +158,10 @@ class FullFlowChecks(unittest.TestCase):
   self.assertEqual('failed',report.status)
   self.assertTrue(any(h['category']=='无依据效果' for h in report.rewrite_hits))
 
+ def test_unsupported_display_ratio_is_a_numeric_claim(self):
+  bad=copy.deepcopy(self.output);bad['article']['body'][0]['text']+='屏幕为 16:9 [K001]。'
+  report,_=self.execute(bad)
+  self.assertEqual('blocked',report.status)
+  self.assertTrue(any(h['word']=='16:9' for h in report.rewrite_hits))
+
 if __name__=='__main__':unittest.main()
