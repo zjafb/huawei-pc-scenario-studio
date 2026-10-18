@@ -1,6 +1,6 @@
 """Full-catalogue, four-channel writing with source-bound evidence and real media."""
 from __future__ import annotations
-import json,re
+import json,re,copy
 from datetime import datetime
 from dataclasses import asdict
 from . import catalog,compliance
@@ -90,7 +90,8 @@ def assertion_hits(text):
 
 def _evaluate(rep,output,facts,policy,channel):
     if not _valid_output(output):
-        rep.message='模型输出结构不完整，未展示为成稿。';return
+        rep.status='failed';rep.message='模型输出结构不完整，未展示为成稿。'
+        rep.checks.append(_check('模型结构',False,rep.message));return
     rep.article=output.get('article',{});rep.scene_judgement=output.get('scene_judgement',{})
     rep.strategy=output.get('strategy',{})
     known={f['id']:f for f in facts}
@@ -172,6 +173,31 @@ def _evaluate(rep,output,facts,policy,channel):
         rep.status='restricted' if not enough or rep.run['source_level']=='discovery' or rep.mode=='test' else 'qualified'
         rep.message='正文已完成。'+(rep.image_shortage or '')
         if rep.run['source_level']=='discovery':rep.message+='该产品目前只有发现卡，定位介绍可用，完整规格仍需核对。'
+
+def remove_risky_body_sentences(output,hits):
+    """Delete unsupported body sentences, never invent replacement prose or facts.
+
+    This editorial pass is followed by the same complete validation. If removing
+    claims leaves too little text or too few paragraphs, the result still fails.
+    """
+    cleaned=copy.deepcopy(output);removed=[];body=[]
+    for block in cleaned.get('article',{}).get('body',[]):
+        pieces=re.findall(r'[^。！？!?；;\n]+[。！？!?；;\n]*',block['text'])
+        kept=[]
+        for piece in pieces:
+            reasons=[]
+            for hit in hits:
+                word=hit.get('word','');sentence=hit.get('sentence','')
+                if (word and word in piece) or (sentence and sentence.strip() in piece):
+                    reasons.append(hit['category']+'：'+word)
+            if reasons:removed.append({'text':piece,'reasons':reasons})
+            else:kept.append(piece)
+        text=''.join(kept).strip()
+        if re.sub(r'[\s。！？!?；;]','',FACT_MARK.sub('',text)):
+            # Rebuild declarations from the surviving visible source links.
+            body.append({**block,'text':text,'fact_ids':sorted(set(FACT_MARK.findall(text)))})
+    cleaned.setdefault('article',{})['body']=body
+    return cleaned,removed
 
 def run_task(*,on_progress=None,**kwargs):
     """Emit milestones only when execution actually reaches them; no timed progress."""
@@ -257,6 +283,14 @@ FACT_POOL（所有事实只从这里来，条件脚注必须保留）：\n{json.
             rep.checks=[];rep.rewrite_hits=[]
             if on_progress:on_progress(3,'模型已返回，正在核验引用、数字、营销措辞和渠道结构')
             _evaluate(rep,output,facts,policy,channel)
+            if channel=='wechat' and rep.rewrite_hits:
+                cleaned,removed=remove_risky_body_sentences(output,rep.rewrite_hits)
+                if removed:
+                    if on_progress:on_progress(3,'已剔除风险句子，正在重新核验整篇文章')
+                    rep.run.setdefault('editorial_removals',[]).append({'attempt':attempt+1,'removed':removed})
+                    rep.checks=[];rep.rewrite_hits=[]
+                    _evaluate(rep,cleaned,facts,policy,channel)
+                    rep.notes_for_review.append(f'本轮删除{len(removed)}处风险句子后重新整篇核验，原始模型输出与删除记录均已保留。')
         except ConnectorError as error:
             rep.status='failed';rep.message='模型调用失败：'+str(error)
             rep.checks=[_check('模型输出',False,rep.message)]
@@ -274,9 +308,11 @@ FACT_POOL（所有事实只从这里来，条件脚注必须保留）：\n{json.
             attempt_record={'article':rep.article,'checks':rep.checks,'status':rep.status}
             if attempt==0:rep.run['first_attempt']=attempt_record
             rep.run.setdefault('repair_attempts',[]).append(attempt_record)
+            prompt+='\n上一轮待修订输出（只作编辑参考，不能替代 FACT_POOL；保留已通过的内容，仅修正核验指出的问题）：'+json.dumps({'scene_judgement':rep.scene_judgement,'strategy':rep.strategy,'article':rep.article,'images':[],'notes_for_review':[]},ensure_ascii=False)
             prompt+='\n上次程序核验未通过，请纠正后重新输出完整JSON，不要重复错误：'+json.dumps(rep.checks,ensure_ascii=False)
             prompt+='\n具体风险词：'+json.dumps(rep.rewrite_hits,ensure_ascii=False)
             prompt+=f'\n本次重写目标{target}字。完整输出最终成稿，删除所有内部约束、绝对化措辞和无依据效果，不要解释核验规则。保留必要的参数限定条件与引用。'
+            prompt+='\n若只剩篇幅不足，保留现有安全段落，补充与受众有关的选购问题和到店核对步骤；不得增加新参数、单位换算或体验结论。'
     for index,image in enumerate(rep.images):
         image['position']='导语后' if index==0 else f"第{min(len(rep.article.get('body',[])),index)}段后" if rep.article.get('body') else '标题后'
         image['caption']=image['actual_view']

@@ -1,5 +1,5 @@
 {
-  "created_at": "2026-10-18T17:05:40.244152+08:00",
+  "created_at": "2026-10-18T17:16:31.416459+08:00",
   "purpose": "public source only; excludes real knowledge, approvals, credentials and run outputs",
   "configured_credentials_scanned": true,
   "files": [
@@ -85,8 +85,8 @@
     },
     {
       "path": "app/full_pipeline.py",
-      "bytes": 23587,
-      "sha256": "e98b9f1fdcfd6179ca03562ccbc25141d2d8bdd6035c07a9171bb648fc5a7b20"
+      "bytes": 26133,
+      "sha256": "6fe737776472551d321cd496e39effbbb735a81dad347508710d2b88b1cc80ac"
     },
     {
       "path": "app/images.py",
@@ -225,8 +225,8 @@
     },
     {
       "path": "tests/test_full_catalog.py",
-      "bytes": 8507,
-      "sha256": "bcf05a78ccd3e9ba55ca07ddce2b8f9d6ceebc4c751408f23a3b2a36a8597b6f"
+      "bytes": 10052,
+      "sha256": "69ef0172936dde7ede36fa65782722c11ee27a4dee77d98affe63a8537c3780a"
     },
     {
       "path": "tests/test_images.py",

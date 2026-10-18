@@ -64,7 +64,10 @@ class FullFlowChecks(unittest.TestCase):
  def execute(self,output,**kwargs):
   class Model:
    model='SYNTHETIC';stats={'model_requests':0}
-   def chat_json(self,*args,**kwargs):self.stats['model_requests']+=1;return copy.deepcopy(output)
+   def chat_json(self,*args,**kwargs):
+    self.stats['model_requests']+=1
+    self.prompts=getattr(self,'prompts',[])+[copy.deepcopy(args[0])]
+    return copy.deepcopy(output)
   client=Model()
   with patch.object(catalog,'find_product',return_value=self.item),patch.object(catalog,'facts_for',return_value=self.facts),patch.object(catalog,'assets_for',return_value=[self.image]),patch.object(catalog,'read_verified',return_value=(self.raw,self.image['sha256'])):
    report=flow.run_task(product='SYNTHETIC',scene='门店到访',platform='moments',detail_level='标准',model_client=client,**kwargs)
@@ -82,6 +85,14 @@ class FullFlowChecks(unittest.TestCase):
   report,client=self.execute(bad)
   self.assertEqual('blocked',report.status);self.assertEqual(3,client.stats['model_requests'])
   self.assertNotIn('data:image',rich_article(report))
+
+ def test_repair_receives_actual_previous_draft_not_only_error_labels(self):
+  bad=copy.deepcopy(self.output);bad['article']['body'][0]['text']+=' 续航 99 小时。'
+  report,client=self.execute(bad)
+  repair=client.prompts[1][1]['content']
+  self.assertIn('上一轮待修订输出',repair)
+  self.assertIn('续航 99 小时',repair)
+  self.assertEqual('blocked',report.status)
 
  def test_unknown_visible_citation_cannot_pass(self):
   bad=copy.deepcopy(self.output);bad['article']['body'][0]['text']=bad['article']['body'][0]['text'].replace('[K001]','[K999]')
@@ -112,5 +123,21 @@ class FullFlowChecks(unittest.TestCase):
   report,_=self.execute(bad)
   self.assertIn(report.status,('failed','blocked'))
   self.assertTrue(any(h['category']=='无依据对比' for h in report.rewrite_hits))
+
+ def test_editorial_deletion_preserves_supported_sentence_and_qualifiers(self):
+  out=copy.deepcopy(self.output)
+  original='这款产品的屏幕为 14 英寸 [K001]。'
+  out['article']['body']=[{'text':original+'实际容量为 930 GB。','fact_ids':['K001']}]
+  cleaned,removed=flow.remove_risky_body_sentences(out,[{'word':'930 GB','category':'无依据数字','sentence':out['article']['body'][0]['text']}])
+  self.assertEqual(original,cleaned['article']['body'][0]['text'])
+  self.assertEqual(['K001'],cleaned['article']['body'][0]['fact_ids'])
+  self.assertEqual(1,len(removed));self.assertIn('930 GB',out['article']['body'][0]['text'])
+
+ def test_deletion_cannot_turn_an_empty_body_into_a_qualified_draft(self):
+  out=copy.deepcopy(self.output);out['article']['body']=[{'text':'续航 99 小时。[K001]','fact_ids':['K001']}]
+  cleaned,_=flow.remove_risky_body_sentences(out,[{'word':'99 小时','category':'无依据数字','sentence':''}])
+  self.assertEqual([],cleaned['article']['body'])
+  report,_=self.execute(cleaned)
+  self.assertNotEqual('qualified',report.status)
 
 if __name__=='__main__':unittest.main()
