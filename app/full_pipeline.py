@@ -153,6 +153,9 @@ def _evaluate(rep,output,facts,policy,channel):
         for claim in ('减少滚动次数','提升阅读效率','减轻肩背压力'):
             if claim in segment and claim not in blob:
                 hits.append(compliance.Hit('无依据效果',claim,'rewrite','原文参数不能证明该体验效果，请改为到店核对的建议',segment))
+        for match in re.finditer(r'减少(?:翻页|滚动|滑动)(?:次数)?|纵向.{0,8}(?:更充裕|更大|更多)',segment):
+            if match.group() not in blob:
+                hits.append(compliance.Hit('无依据效果',match.group(),'rewrite','屏幕参数不构成阅读效果的实证，请删除这一推导',segment))
         for number in compliance.UNIT_PATTERN.finditer(segment):
             if _normalize(number.group()) not in _normalize(blob):
                 hits.append(compliance.Hit('无依据数字',number.group(),'block','该段数字单位不在所引用的原文中',segment))

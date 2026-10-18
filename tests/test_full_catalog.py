@@ -152,4 +152,10 @@ class FullFlowChecks(unittest.TestCase):
   self.assertEqual(4,len(report.article['body']))
   self.assertTrue(next(c for c in report.checks if c['name']=='渠道结构与篇幅')['ok'],report.checks)
 
+ def test_screen_effect_synonym_cannot_evade_evidence_check(self):
+  bad=copy.deepcopy(self.output);bad['article']['body'][0]['text']+='纵向空间更充裕，能减少翻页次数。'
+  report,_=self.execute(bad)
+  self.assertEqual('failed',report.status)
+  self.assertTrue(any(h['category']=='无依据效果' for h in report.rewrite_hits))
+
 if __name__=='__main__':unittest.main()

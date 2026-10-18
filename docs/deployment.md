@@ -8,7 +8,7 @@
 
 ## Docker
 
-本机没有Docker，以下构建/云端步骤尚未实测，不能称已部署。
+本机没有Docker，以下自建Docker命令未在本机执行。魔搭托管的Gradio构建已真实运行，具体入口见下方。
 
 1. `docker build -t huawei-pc-agent .`
 2. 私下准备 `.env`，设置模型令牌与模型ID；实时模式另配ima凭证。不提交该文件。
@@ -18,7 +18,12 @@
 
 ## 魔搭创空间
 
-使用支持Docker的创空间，上传已扫描的公开源码包。在平台私有变量中配置模型/ima凭证，通过账号支持的私有文件方式提供v7和画面核对JSON。该账号的私有文件方式目前未验证；未解决前只能展示界面和缺资料提示，不能把原件放公开仓库凑部署。
+当前使用 Gradio 创空间，入口 app.py，免费 platform/2v-cpu-8g-mem，公开体验且源码不可见（protected）。SDK基础版本6.29.1，requirements安装项目实际使用的6.30.0。模型与ima凭证使用平台密文变量，原件仅进入源码不可见的私有部署检出目录，不进入GitHub。
+
+- 体验入口：https://www.modelscope.cn/studios/zzklcd/huawei-pc-scenario-studio
+- 公开源码：https://github.com/zjafb/huawei-pc-scenario-studio
+
+初版已到达Running并确认云端可选55产品；后续修正版仍须以当前页面与真实运行验收为准，不用旧版状态冒充新部署。源码包保持不含知识库，团队在protected仓库中单独提供private-materials/kb与asset-review-v2.json，并仅在该检出目录的.dockerignore允许private-materials。
 
 实际验收应包括：页面可访问、55产品目录可选、模型真实生成、原图展示、HTML下载、重启后私有配置仍可用、未登录浏览器可打开提交链接。没做的标未验证。实时模式必须另验证ima本次查库/原文/图片均成功，不能拿本地模式的结果冒充。
 
