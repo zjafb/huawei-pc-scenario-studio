@@ -68,6 +68,12 @@ def assertion_hits(text):
     hits=[]
     for sentence in re.split(r'[。！？!?；;\n，,]',text):
         for hit in compliance.check_request(sentence):
+            # Literal words inside ordinary selection advice are not ad claims.
+            if hit.category=='无依据对比' and hit.word.startswith('比例'):continue
+            if hit.word=='仅需' and re.search(r'仅需(?:要)?(?:基础|日常|简单|文档|网页|办公|查看|确认|准备|填写)',sentence):continue
+            if hit.word=='价格' and re.search(r'(?:性能|便携|预算|选择).{0,12}价格.{0,8}(?:犹豫|权衡|之间|间)',sentence) and not re.search(r'\d+\s*元|￥|优惠|低价|实惠|便宜|立减|补贴|特价',sentence):continue
+            if hit.word in ('更适合','最适合','最合适') and re.search(r'(?:只有|找到|寻找|匹配|挑选|选到|挑出).{0,8}(?:更适合|最适合|最合适)(?:你|自己|自身|个人|的配置)',sentence) and not re.search(r'这台|这款|本产品|本机|该机',sentence):continue
+            if hit.word=='真实体验' and re.search(r'(?:接近|到店|现场|亲自|建议|请|可以).{0,16}真实体验',sentence) and not re.search(r'(?:我|我们|客户|用户).{0,10}真实体验|真实体验(?:表明|证明|发现|显示)',sentence):continue
             if hit.word=='最好' and re.search(r'最好(?:还是|先|提前|携带|带上|带着|确认|核对|询问|请|到店|实地|亲手|在现场|把|将|列|准备|留意|了解|核实|检查|联系|结合|考虑|记住|保留|的验证方式|的方式是)',sentence):continue
             if hit.word=='实测' and re.search(r'(?:建议|请|不妨|可以).{0,40}实测|去门店实测|到店.{0,8}实测',sentence) and not re.search(r'我.{0,8}实测',sentence):continue
             if hit.word=='价格' and not re.search(r'\d+\s*元|￥|¥|低|便宜|优惠|立减|补贴|特价',sentence) and re.search(r'配置|预算|核对|确认|咨询|为准|核验',sentence):continue

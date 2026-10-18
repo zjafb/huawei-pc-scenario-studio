@@ -46,6 +46,9 @@ class FullCatalogueChecks(unittest.TestCase):
   self.assertTrue(flow.assertion_hits('先别问最轻，这台电脑全网最轻。'))
   self.assertFalse(flow.assertion_hits('带着需求到店，做出最适合自己的选择。'))
   self.assertTrue(flow.assertion_hits('这台是最适合大学生的电脑。'))
+  self.assertFalse(flow.assertion_hits('新生往往在性能、便携与价格间犹豫。其尺寸与比例对长时间阅读很重要。若仅需基础办公与网页浏览，只有“更适合你当下阶段”的选择。'))
+  self.assertFalse(flow.assertion_hits('这样得出的结论更接近真实体验。让店员帮你匹配最合适的配置组合。'))
+  self.assertTrue(flow.assertion_hits('这款仅需2999元，价格实惠。这台更适合你。我们真实体验发现性能提升。'))
 
 class FullFlowChecks(unittest.TestCase):
  def setUp(self):
@@ -74,7 +77,7 @@ class FullFlowChecks(unittest.TestCase):
   self.assertEqual(0,report.run['source_stats']['api_requests'])
   self.assertIn('data:image/png;base64',rich_article(report))
 
- def test_unknown_numeric_claim_stays_blocked_after_one_repair(self):
+ def test_unknown_numeric_claim_stays_blocked_after_two_repairs(self):
   bad=copy.deepcopy(self.output);bad['article']['body'][0]['text']+=' 续航 99 小时。'
   report,client=self.execute(bad)
   self.assertEqual('blocked',report.status);self.assertEqual(3,client.stats['model_requests'])
