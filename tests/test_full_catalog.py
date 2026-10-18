@@ -109,6 +109,14 @@ class FullFlowChecks(unittest.TestCase):
   self.assertEqual('need_info',report.status)
   self.assertEqual(0,client.stats['model_requests'])
 
+ def test_awareness_rejects_renamed_purchase_checklist(self):
+  output=copy.deepcopy(self.output)
+  output['article']['title']='先别急，选购指南来了'
+  output['article']['cta']='收藏这篇，评论说说你的日常场景。'
+  report,_=self.execute(output,marketing_goal='awareness')
+  self.assertEqual('failed',report.status)
+  self.assertFalse(next(c for c in report.checks if c['name']=='营销目标与行动引导')['ok'])
+
  def test_each_goal_requires_its_own_next_action(self):
   for goal,cta in [('enterprise','留言整理岗位和软件需求，作为进一步企业咨询的起点。'),('decision','核对自己的用途与配置清单，再做选购选择。'),('store','欢迎到店带上使用需求，亲手看一看实物。')]:
    with self.subTest(goal=goal):
@@ -185,6 +193,10 @@ class FullFlowChecks(unittest.TestCase):
   report,_=self.execute(out,channel='xhs')
   self.assertEqual(4,len(report.article['body']))
   self.assertTrue(next(c for c in report.checks if c['name']=='渠道结构与篇幅')['ok'],report.checks)
+  self.assertEqual('restricted',report.status)
+  self.assertEqual(1,len(report.images))
+  self.assertIn('仅有1张',report.image_shortage)
+  self.assertEqual(1,rich_article(report).count('<img'))
 
  def test_screen_effect_synonym_cannot_evade_evidence_check(self):
   bad=copy.deepcopy(self.output);bad['article']['body'][0]['text']+='纵向空间更充裕，能减少翻页次数。'

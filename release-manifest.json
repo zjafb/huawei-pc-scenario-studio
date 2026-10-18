@@ -1,5 +1,5 @@
 {
-  "created_at": "2026-10-18T19:23:39.985540+08:00",
+  "created_at": "2026-10-18T19:27:34.765642+08:00",
   "purpose": "public source only; excludes real knowledge, approvals, credentials and run outputs",
   "configured_credentials_scanned": true,
   "files": [
@@ -70,8 +70,8 @@
     },
     {
       "path": "app/channels.py",
-      "bytes": 6197,
-      "sha256": "897f383cb83374b9bc192a2171482896daba492f08944f50d241ee891afa827c"
+      "bytes": 8124,
+      "sha256": "24f1b88ad31ebe7a6a1bdde447a220400c3f03aca457b588aa834b78f11462e3"
     },
     {
       "path": "app/compliance.py",
@@ -85,8 +85,8 @@
     },
     {
       "path": "app/full_pipeline.py",
-      "bytes": 30498,
-      "sha256": "990233d45cbfb44b81fead05ed557dc9251fe0b8be111ed8c35dcb9abfb6146a"
+      "bytes": 31146,
+      "sha256": "2e2ad1ce4103f098a9870194cac39f548aff1ff3d170cf581b4cf4df64fa1f2b"
     },
     {
       "path": "app/images.py",
@@ -225,8 +225,8 @@
     },
     {
       "path": "tests/test_full_catalog.py",
-      "bytes": 14486,
-      "sha256": "8ddbb0981189b640ca560e4f52132809a627c43b90152d93aba850c6abc7c7ff"
+      "bytes": 15125,
+      "sha256": "338aacf6b212a7ca8a4af96042e847b70601ea5e7c551998e59e181b81ea625f"
     },
     {
       "path": "tests/test_images.py",

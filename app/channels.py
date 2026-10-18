@@ -36,6 +36,21 @@ GOALS={
   'instruction':'用需求—事实—选择条件帮助读者判断：什么需求值得关注该特点、哪项条件仍需核对。区分已知参数和兼容性未知项，不给所有人同一结论，不做无证据型号对比。CTA邀请整理需求/核对具体配置后做选择；不强行转成到店广告。'},
 }
 
+INTEREST_SCENES={
+ '开学季':'围绕新校园的一段日常：课间的小空档、图书馆靠窗的位置、社团的小计划或晚间宿舍。选一条生活主线，写读者想把时间用在哪里，不把故事变成购机检查清单。',
+ '职场差旅':'围绕候车、抵达异地、会议间隙等一段日常，写移动中的个人节奏与小计划。读者想做的事是愿望，不把它写成产品已经实现的效果。',
+ '内容创作':'围绕一次灵感萌生、整理想法或写下草稿的日常片段，谈创作心情与桌面习惯，不代替读者宣称软件运行或创作效率。',
+ '家庭换新':'围绕家里一角的日常、家人各自的兴趣和共处时光，不写购机步骤和资料迁移承诺。',
+ '企业采购':'围绕同事的工作日常与桌面习惯展开兴趣介绍，具体采购条件留给后续了解，不承诺企业服务或认证。',
+ '门店到访':'描写路过数码体验区时会好奇的外观与桌面氛围，保持兴趣介绍，是否进店服从用户目标。',
+ '新品关注':'从一个设计好奇点和日常桌面习惯入手，引起继续了解的兴趣，不虚构上一代对比和首发权益。',
+ '节日送礼':'从收礼人的一个兴趣或生活小片段切入，写心意和好奇，不写促销或虚构使用感受。',
+}
+
+
+def scene_brief(scene,goal):
+    return (INTEREST_SCENES if goal=='awareness' else SCENE_GUIDANCE).get(scene,'以用户提供的场景为准，不补编产品能力。')
+
 
 def goal_key(value):
     return next((k for k,v in GOALS.items() if value in (k,v['label'])),None)
@@ -43,4 +58,7 @@ def goal_key(value):
 
 def writing_brief(channel,goal):
     """Channel decides voice and form; selected goal decides intent and next action."""
-    return f"渠道表达：{CHANNELS[channel]['instruction']}\n营销目标：{GOALS[goal]['label']}\n目标策略：{GOALS[goal]['instruction']}\n场景决定叙述素材；渠道决定结构和语气；营销目标决定取舍和CTA。不得自行更换用户选定的目标。"
+    brief=f"渠道表达：{CHANNELS[channel]['instruction']}\n营销目标：{GOALS[goal]['label']}\n目标策略：{GOALS[goal]['instruction']}\n场景决定叙述素材；渠道决定结构和语气；营销目标决定取舍和CTA。不得自行更换用户选定的目标。"
+    if goal=='awareness':
+        brief+='\n本次叙事顺序：选定一个具体的日常画面和小愿望→用第二人称带入这一画面→自然插入少量有出处的产品特点→把话题还给读者，邀请分享。各段沿同一个画面推进，标题突出生活兴趣，必要的适配提醒只在末段简短交代。所有主观期待都属于读者，不当作产品使用结论。'
+    return brief

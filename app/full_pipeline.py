@@ -4,7 +4,7 @@ import json,re,copy
 from datetime import datetime
 from dataclasses import asdict
 from . import catalog,compliance
-from .channels import CHANNELS,SCENES,SCENE_GUIDANCE,GOALS,channel_key,goal_key,writing_brief
+from .channels import CHANNELS,SCENES,GOALS,channel_key,goal_key,writing_brief,scene_brief
 from .pipeline import Report,FACT_MARK,_valid_output,_article_text,_check,to_text,STATUS_LABEL
 from connectors import ConnectorError,ModelScopeClient,IMAClient,LiveSourceReader
 
@@ -63,7 +63,10 @@ def writing_facts(facts,channel,request,goal='decision'):
             selected += [f for f in curated if f['category']=='特色应用']
         selected=selected or curated
     if goal=='awareness' and channel in ('wechat','xhs'):
-        selected=selected[:3]
+        themes=[f for f in selected if f['category'] in ('尺寸与重量','屏幕尺寸')]
+        selected=(themes or selected)[:2]
+        if any(w in request for w in ('系统','鸿蒙','HarmonyOS','Windows','软件')):
+            selected += [f for f in curated if f['category']=='操作系统'][:1]
     return [{**f,'id':f'K{index+1:03d}'} for index,f in enumerate(selected)]
 
 def assertion_hits(text):
@@ -159,7 +162,7 @@ def _evaluate(rep,output,facts,policy,channel):
         for claim in ('减少滚动次数','提升阅读效率','减轻肩背压力'):
             if claim in segment and claim not in blob:
                 hits.append(compliance.Hit('无依据效果',claim,'rewrite','原文参数不能证明该体验效果，请改为到店核对的建议',segment))
-        for match in re.finditer(r'减少(?:频繁)?(?:翻页|滚动|滑动)(?:的次数|次数)?|纵向.{0,8}(?:更充裕|更大|更多)|(?:同一页|一屏).{0,8}(?:看到|显示|容纳)更多|黄金平衡点|轻便到.{0,8}忘记|(?:既能|能)看清.{0,30}(?:图纸|图表|公式|表格)|(?:拎|背|拿).{0,8}(?:没那么吃力|毫不费力|很轻松)|(?:少些|减轻|减少).{0,6}(?:负担|压力)',segment):
+        for match in re.finditer(r'减少(?:频繁)?(?:翻页|滚动|滑动)(?:的次数|次数)?|纵向.{0,8}(?:更充裕|更大|更多)|(?:同一页|一屏).{0,8}(?:看到|显示|容纳)更多|装下更多细节|不用频繁缩放|黄金平衡点|卡在.{0,16}平衡点|轻便到.{0,8}忘记|(?:既能|能)看清.{0,30}(?:图纸|图表|公式|表格)|(?:拎|背|拿).{0,8}(?:没那么吃力|毫不费力|很轻松)|(?:少些|减轻|减少).{0,6}(?:负担|压力)',segment):
             if match.group() not in blob:
                 hits.append(compliance.Hit('无依据效果',match.group(),'rewrite','屏幕参数不构成阅读效果的实证，请删除这一推导',segment))
         for number in compliance.UNIT_PATTERN.finditer(segment):
@@ -198,6 +201,8 @@ def _evaluate(rep,output,facts,policy,channel):
         if not re.search(actions[goal],cta):goal_issues.append('行动引导未体现所选营销目标：'+GOALS[goal]['label'])
         if goal in ('awareness','decision','enterprise') and re.search(r'欢迎.{0,6}(?:到店|进店)|(?:快来|来|请|邀请|建议).{0,4}(?:到店|进店)|到店(?:体验|咨询|看看|了解)',cta):
             goal_issues.append('当前目标不应以邀请到店收尾，请按所选目标设置行动引导')
+        if goal=='awareness' and re.search(r'别急着下单|先别急(?:着)?(?:下单|买|选|入手)|先问自己|避坑指南|选购指南|购机指南|几点.{0,4}有数',rep.article.get('title','')):
+            goal_issues.append('种草了解需要场景与兴趣标题；当前仍是劝购/避坑清单标题，请围绕一个日常画面重新组织，而不是把选购指南换成口语')
         rep.checks.append(_check('营销目标与行动引导',not goal_issues,'；'.join(goal_issues) if goal_issues else GOALS[goal]['label']+' · 行动引导一致'))
     enough=len(rep.images)>=policy['min_images']
     rep.image_shortage='' if enough else f"当前型号需{policy['min_images']}张，仅有{len(rep.images)}张可用图；未借用其他产品素材。"
@@ -301,10 +306,11 @@ def _run_task(*,product='',audience='',scene='',platform='',free_text='',variant
     prompt=f'''产品：{item['name']}\n资料级别：{item['level']}\n版本：{variant or '按原文区分，不混合配置'}\n系统：{os_name or '按原文区分'}
 受众：{audience or '根据场景推断，并列为假设'}\n场景：{scene_name}\n平台：{policy['label']}\n营销目标（用户已选，不可变更）：{GOALS[goal]['label']}\n详略：{detail_level}
 用户说明：{free_text}\n修改要求：{extra_request}
-场景策略：{SCENE_GUIDANCE.get(scene_name,'以用户明确提供的场景为准，不补编产品能力。')}
+场景策略：{scene_brief(scene_name,goal)}
 FACT_POOL（所有事实只从这里来，条件脚注必须保留）：\n{json.dumps(pool,ensure_ascii=False)}
 图片由程序按本型号实际原图插入，不需要你编造或输出图片。当前原图{len(rep.images)}张。
-先理解场景和用户的问题，围绕场景选择事实，再写有开头、展开、建议、行动引导的完整内容。不要照抄现成软文，不要为了篇幅补编事实。
+叙事要求：{GOALS[goal]['instruction']}
+先理解场景，按所选目标组织开头、展开和收束。不要照抄现成软文，不要为了篇幅补编事实。
 必须达到本次渠道篇幅要求：{policy['min_chars']}–{policy['max_chars']}字。只遵守本次渠道，不套用其他渠道篇幅。
 每个带产品事实的 body 段落，在 text 中使用 [K001] 这样的可见引用，fact_ids 列出相同编号。选购提醒若含数字也必须引用。
 只输出严格JSON。'''
@@ -316,7 +322,7 @@ FACT_POOL（所有事实只从这里来，条件脚注必须保留）：\n{json.
             client=client or model_client or ModelScopeClient()
             messages=[{'role':'system','content':system},{'role':'user','content':prompt}]
             rep.run['prompt_messages']=messages
-            output=client.chat_json(messages,max_tokens=6500 if channel=='wechat' else 5000 if channel=='xhs' else 3200,temperature=0.55 if channel=='xhs' else 0.45)
+            output=client.chat_json(messages,max_tokens=6500 if channel=='wechat' else 5000 if channel=='xhs' else 3200,temperature=0.65 if channel=='xhs' else 0.45)
             rep.run['model']=client.model;rep.run['model_stats']=dict(getattr(client,'stats',{}))
             completion=getattr(client,'last_completion',None)
             if completion:rep.run.update(model_raw_output=completion.text,usage=completion.usage,model_request_id=completion.request_id)
