@@ -71,11 +71,16 @@ class FullFlowChecks(unittest.TestCase):
    'cta':'欢迎到店查看实物，或留言说说你的具体使用需求。','tags':[]},'images':[],'notes_for_review':[]}
 
  def execute(self,output,channel='moments',**kwargs):
+  editor_issues=kwargs.pop('editor_issues',[])
+  review_responses=kwargs.pop('review_responses',None)
   class Model:
    model='SYNTHETIC';stats={'model_requests':0}
    def chat_json(self,*args,**kwargs):
     self.stats['model_requests']+=1
     self.prompts=getattr(self,'prompts',[])+[copy.deepcopy(args[0])]
+    if args[0][0]['content'].startswith('[EDITOR_REVIEW]'):
+     index=getattr(self,'review_count',0);self.review_count=index+1
+     return copy.deepcopy(review_responses[min(index,len(review_responses)-1)]) if review_responses else {'issues':copy.deepcopy(editor_issues)}
     return copy.deepcopy(output)
   client=Model()
   kwargs.setdefault('marketing_goal','store')
@@ -130,6 +135,40 @@ class FullFlowChecks(unittest.TestCase):
   self.assertEqual('blocked',report.status);self.assertEqual(3,client.stats['model_requests'])
   self.assertNotIn('data:image',rich_article(report))
 
+ def test_valid_numbers_do_not_override_an_unsupported_experience_claim(self):
+  output=copy.deepcopy(self.output);claim='它让专注变得更容易。'
+  output['article']['body'][0]['text']+=claim
+  report,client=self.execute(output,editor_issues=[{'quote':claim,'reason':'屏幕尺寸不能证明专注效果。'}])
+  self.assertEqual('failed',report.status)
+  self.assertNotIn('data:image',rich_article(report))
+  self.assertFalse(next(c for c in report.checks if c['name']=='表达与证据复核')['ok'])
+  self.assertEqual(3,len(report.run['expression_reviews']))
+  self.assertNotIn(claim,client.prompts[2][1]['content'])
+  self.assertIn('屏幕尺寸不能证明专注效果',client.prompts[2][1]['content'])
+
+ def test_reviewer_cannot_invent_a_quote_and_mark_the_draft_reviewed(self):
+  report,_=self.execute(self.output,editor_issues=[{'quote':'不在原稿里的句子','reason':'虚构问题'}])
+  self.assertEqual('failed',report.status)
+  self.assertEqual('invalid_model_json',report.run['failure_kind'])
+
+ def test_real_editor_revision_requires_a_second_review_before_publication(self):
+  output=copy.deepcopy(self.output);claim='它让专注变得更容易。'
+  output['article']['body'][0]['text']+=claim
+  responses=[{'issues':[{'quote':claim,'reason':'无效果证据'}],'revised_article':self.output['article']},{'issues':[]}]
+  report,client=self.execute(output,review_responses=responses)
+  self.assertEqual('qualified',report.status,report.checks)
+  self.assertNotIn(claim,report.article['body'][0]['text'])
+  self.assertEqual(2,client.review_count)
+  self.assertEqual(1,len(report.run['expression_edits']))
+
+ def test_editor_revision_cannot_bypass_numeric_source_validation(self):
+  output=copy.deepcopy(self.output);claim='它让专注变得更容易。'
+  output['article']['body'][0]['text']+=claim
+  revision=copy.deepcopy(self.output['article']);revision['body'][0]['text']+='续航99小时。'
+  report,_=self.execute(output,review_responses=[{'issues':[{'quote':claim,'reason':'无效果证据'}],'revised_article':revision}])
+  self.assertEqual('blocked',report.status)
+  self.assertTrue(any(h['word']=='99小时' for h in report.rewrite_hits))
+
  def test_repair_receives_actual_previous_draft_not_only_error_labels(self):
   bad=copy.deepcopy(self.output);bad['article']['body'][0]['text']+=' 续航 99 小时。'
   report,client=self.execute(bad)
@@ -151,6 +190,14 @@ class FullFlowChecks(unittest.TestCase):
  def test_missing_product_asks_before_model(self):
   with patch.object(catalog,'find_product',return_value=None):report=flow.run_task(product='',platform='wechat',scene='职场差旅')
   self.assertEqual('need_info',report.status);self.assertTrue(report.questions)
+
+ def test_actual_string_paragraphs_are_normalized_without_inventing_copy(self):
+  output=copy.deepcopy(self.output);text=output['article']['body'][0]['text']
+  output['article']['body']=[text]
+  report,_=self.execute(output)
+  self.assertEqual('qualified',report.status,report.checks)
+  self.assertEqual(text,report.article['body'][0]['text'])
+  self.assertEqual(['K001'],report.article['body'][0]['fact_ids'])
 
  def test_discovery_card_does_not_become_complete_specification(self):
   self.item['level']='discovery';report,_=self.execute(self.output)
@@ -221,5 +268,11 @@ class FullFlowChecks(unittest.TestCase):
   report,_=self.execute(bad)
   self.assertEqual('failed',report.status)
   self.assertTrue(any(h['category']=='无依据效果' for h in report.rewrite_hits))
+
+ def test_reader_expectation_is_not_a_proven_product_effect(self):
+  output=copy.deepcopy(self.output)
+  output['article']['body'][0]['text']+='你或许期待减轻负担，实际背负感受还需自行确认。'
+  report,_=self.execute(output)
+  self.assertEqual('qualified',report.status,report.checks)
 
 if __name__=='__main__':unittest.main()

@@ -97,6 +97,11 @@ def assertion_hits(text):
     return compliance._dedupe(hits)
 
 def _evaluate(rep,output,facts,policy,channel):
+    # Some valid JSON writers return body strings. Preserve actual prose and
+    # visible citations while adapting this harmless schema variation.
+    output=copy.deepcopy(output)
+    if isinstance(output,dict) and isinstance(output.get('article'),dict) and isinstance(output['article'].get('body'),list):
+        output['article']['body']=[{'text':b,'fact_ids':sorted(set(FACT_MARK.findall(b)))} if isinstance(b,str) else b for b in output['article']['body']]
     if not _valid_output(output):
         rep.status='failed';rep.message='模型输出结构不完整，未展示为成稿。'
         rep.checks.append(_check('模型结构',False,rep.message));return
@@ -163,6 +168,8 @@ def _evaluate(rep,output,facts,policy,channel):
             if claim in segment and claim not in blob:
                 hits.append(compliance.Hit('无依据效果',claim,'rewrite','原文参数不能证明该体验效果，请改为到店核对的建议',segment))
         for match in re.finditer(r'减少(?:频繁)?(?:翻页|滚动|滑动)(?:的次数|次数)?|纵向.{0,8}(?:更充裕|更大|更多)|(?:同一页|一屏).{0,8}(?:看到|显示|容纳)更多|装下更多细节|不用频繁缩放|黄金平衡点|卡在.{0,16}平衡点|轻便到.{0,8}忘记|(?:既能|能)看清.{0,30}(?:图纸|图表|公式|表格)|(?:拎|背|拿).{0,8}(?:没那么吃力|毫不费力|很轻松)|(?:少些|减轻|减少).{0,6}(?:负担|压力)',segment):
+            clause=re.split(r'[。！？!?；;]',segment[:match.start()])[-1]
+            if re.search(r'希望|期待|愿望|是否|能否|不代表|不能证明|不保证',clause) and not re.search(r'它能|它让|这台能|这款能|该机能',clause):continue
             if match.group() not in blob:
                 hits.append(compliance.Hit('无依据效果',match.group(),'rewrite','屏幕参数不构成阅读效果的实证，请删除这一推导',segment))
         for number in compliance.UNIT_PATTERN.finditer(segment):
@@ -223,6 +230,7 @@ def remove_risky_body_sentences(output,hits):
     """
     cleaned=copy.deepcopy(output);removed=[];body=[]
     for block in cleaned.get('article',{}).get('body',[]):
+        if isinstance(block,str):block={'text':block,'fact_ids':sorted(set(FACT_MARK.findall(block)))}
         pieces=re.findall(r'[^。！？!?；;\n]+[。！？!?；;\n]*',block['text'])
         kept=[]
         for piece in pieces:
@@ -239,6 +247,36 @@ def remove_risky_body_sentences(output,hits):
             body.append({**block,'text':text,'fact_ids':sorted(set(FACT_MARK.findall(text)))})
     cleaned.setdefault('article',{})['body']=body
     return cleaned,removed
+
+def review_expression(client,rep,facts,channel,goal,*,revise=True):
+    """A real model review supplements source/number rules; never overrides failure."""
+    text=_article_text(rep.article)
+    instruction='''[EDITOR_REVIEW] 你是独立审稿人。只检查给定稿件，不写新稿。产品的可验证能力、使用效果、兼容性、相对优势和服务承诺必须由提供的原文直接支持。
+重点：重量不能证明背着不累、肩膀负担小或携带轻松；屏幕尺寸不能证明桌面不拥挤、无需缩放、阅读效果、多人观看不挤；不能凭规格推导专注、效率、安静或续航。未带编号的效果也要查。标题和图景中的实际产品效果同样要查。
+允许读者的愿望、假设情境、开放问题、审慎核对建议，不要求每句生活描写都引用。区分读者希望与“它让你/这尺寸刚好能”的断言，不把正常建议判成产品承诺。“日常往返图书馆通勤”只是使用场景，不是背着不累的承诺；“不想被重量拖后腿”是读者愿望，不是产品实现的承诺；“可以到店核对”是建议。不要把这些报为效果问题。只有明确归因于产品的效果断言才报告。
+严格校准：以下均允许，不要过度推断隐藏的暗示：“将重量数值作为参考，结合自己对背负重量的接受程度判断是否符合通勤习惯”；“你或许期待减轻负担，实际是否轻盈还需自己确认”；“尺寸是物理参数，效果取决于实际使用”；“如果东西太重，肩膀是否会抗议”。这些是条件、愿望或问题，不是已实现的产品效果。只有直接肯定句如“它让你背着不累”“该屏幕使人更专注”“此比例无需缩放”才属于本项问题。quote只摘录具体问题断言，不能把含审慎建议的整个段落笼统报错。
+同时检查明显背离给定目标/渠道的内容。种草可轻松有生活感，海报应精练，到店目标需有进店动作。不因为个人措辞偏好挑错。
+只返回严格JSON：{"issues":[{"quote":"稿件中的完整原句，逐字摘录","reason":"哪条效果或目标缺乏依据，具体理由"}]}。无具体问题则issues为空。不编造原句，不补写事实。'''
+    policy=dict(CHANNELS[channel])
+    if rep.run.get('input',{}).get('detail_level')=='详细':policy['min_chars']={'wechat':1000,'xhs':500,'moments':140,'poster':70}[channel]
+    if revise:
+        instruction+='\n若有问题，同时返回revised_article：按原article的title/lead/body（text与fact_ids对象数组）/cta/tags结构，实际编辑出完整修订稿。删除无依据效果而不是换个词暗示；客观参数和条件独立陈述，生活部分只写读者的愿望、情境与问题，不评价设备已实现的体感。保留所选目标、渠道结构和引用；篇幅不足用读者的生活片段补足，不补产品结论。不写免费服务。没有问题时revised_article为null。'
+    result=client.chat_json([{'role':'system','content':instruction},{'role':'user','content':json.dumps({'channel':CHANNELS[channel]['label'],'goal':GOALS[goal]['label'],'channel_rules':writing_brief(channel,goal),'length_min':policy['min_chars'],'length_max':policy['max_chars'],'body_min':policy['paragraphs'],'source_facts':[{k:f[k] for k in ('id','category','quote')} for f in facts],'article':rep.article,'copy':text},ensure_ascii=False)}],max_tokens=6500 if revise and channel=='wechat' else 4500 if revise else 2200,temperature=0.1)
+    rep.run.setdefault('expression_review_responses',[]).append(copy.deepcopy(result))
+    if not isinstance(result,dict) or not isinstance(result.get('issues'),list):
+        raise ConnectorError('表达复核未返回有效问题清单，未放行稿件。',kind='invalid_model_json')
+    issues=result['issues']
+    if any(not isinstance(i,dict) or not isinstance(i.get('quote'),str) or not i['quote'].strip() or i['quote'] not in text or not isinstance(i.get('reason'),str) or not i['reason'].strip() for i in issues):
+        raise ConnectorError('表达复核未能定位原稿句子，未放行稿件。',kind='invalid_model_json')
+    completion=getattr(client,'last_completion',None)
+    rep.run.setdefault('expression_reviews',[]).append({'issues':issues,'request_id':getattr(completion,'request_id',None),'raw_output':getattr(completion,'text',None)})
+    rep.run['model_stats']=dict(getattr(client,'stats',{}))
+    rep.checks.append(_check('表达与证据复核',not issues,'模型逐句复核未发现具体无依据效果或目标偏离，发布前仍需人工复核' if not issues else '；'.join(i['quote']+'：'+i['reason'] for i in issues)))
+    if issues:
+        rep.status='failed';rep.message='表达复核发现缺乏依据的表述，未展示为可用稿。'
+        rep.rewrite_hits.extend({'category':'表达与证据','word':i['quote'],'sentence':i['quote'],'action':'rewrite','reason':i['reason']} for i in issues)
+    return result.get('revised_article') if issues and revise else None
+
 
 def run_task(*,on_progress=None,**kwargs):
     """Emit milestones only when execution actually reaches them; no timed progress."""
@@ -315,6 +353,7 @@ FACT_POOL（所有事实只从这里来，条件脚注必须保留）：\n{json.
 每个带产品事实的 body 段落，在 text 中使用 [K001] 这样的可见引用，fact_ids 列出相同编号。选购提醒若含数字也必须引用。
 只输出严格JSON。'''
     if previous_article:prompt+='\n上一稿（仅供修订，所有事实仍须属于本次资料）：'+json.dumps(previous_article,ensure_ascii=False)
+    base_prompt=prompt
     client=None
     for attempt in range(3 if mode=='cache' else 1):
         try:
@@ -337,6 +376,17 @@ FACT_POOL（所有事实只从这里来，条件脚注必须保留）：\n{json.
                     rep.checks=[];rep.rewrite_hits=[]
                     _evaluate(rep,cleaned,facts,policy,channel)
                     rep.notes_for_review.append(f'本轮删除{len(removed)}处风险句子后重新整篇核验，原始模型输出与删除记录均已保留。')
+            if rep.status in ('qualified','restricted'):
+                if on_progress:on_progress(3,'规则检查通过，正在复核表达是否超出原文及营销目标')
+                revised=review_expression(client,rep,facts,channel,goal)
+                if isinstance(revised,dict):
+                    rep.run.setdefault('expression_edits',[]).append(copy.deepcopy(revised))
+                    rep.checks=[];rep.rewrite_hits=[]
+                    candidate={**output,'article':revised}
+                    _evaluate(rep,candidate,facts,policy,channel)
+                    if rep.status in ('qualified','restricted'):
+                        if on_progress:on_progress(3,'表达已实际修订，正在重新核验整稿')
+                        review_expression(client,rep,facts,channel,goal,revise=False)
         except ConnectorError as error:
             rep.status='failed';rep.message='模型调用失败：'+str(error)
             rep.checks=[_check('模型输出',False,rep.message)]
@@ -354,11 +404,24 @@ FACT_POOL（所有事实只从这里来，条件脚注必须保留）：\n{json.
             attempt_record={'article':rep.article,'checks':rep.checks,'status':rep.status}
             if attempt==0:rep.run['first_attempt']=attempt_record
             rep.run.setdefault('repair_attempts',[]).append(attempt_record)
+            if any(h.get('category')=='表达与证据' for h in rep.rewrite_hits):
+                # Avoid teaching the writer to repeat an unsafe rhetorical frame.
+                # Carry forward only prose with the review's exact quotes removed.
+                safe=copy.deepcopy(rep.article)
+                for hit in rep.rewrite_hits:
+                    quote=hit['word']
+                    for key in ('title','lead','cta'):safe[key]=safe.get(key,'').replace(quote,'')
+                    for block in safe.get('body',[]):block['text']=block['text'].replace(quote,'')
+                prompt=base_prompt+'\n本轮改用事实编辑视角：事实仅独立陈述原文数字与条件；生活画面只描写读者想做的事情和愿望，二者之间不使用产品导致体感或效果的因果句。禁止产品让人轻松、专注、看得清或效率提升等推论。\n已删除风险措辞的上一稿片段（不完整，只作为真实编辑参考；根据本次目标重新补足结构与篇幅）：'+json.dumps(safe,ensure_ascii=False)
+                prompt+='\n需要解决的问题：'+json.dumps([h['reason'] for h in rep.rewrite_hits],ensure_ascii=False)
+                prompt+='\n只输出原有完整JSON结构，body每项仍为text与fact_ids对象。写生活场景而非产品效果，不增加新数字参数。'
+                continue
             prompt+='\n上一轮待修订输出（只作编辑参考，不能替代 FACT_POOL；保留已通过的内容，仅修正核验指出的问题）：'+json.dumps({'scene_judgement':rep.scene_judgement,'strategy':rep.strategy,'article':rep.article,'images':[],'notes_for_review':[]},ensure_ascii=False)
             prompt+='\n上次程序核验未通过，请纠正后重新输出完整JSON，不要重复错误：'+json.dumps(rep.checks,ensure_ascii=False)
             prompt+='\n具体风险词：'+json.dumps(rep.rewrite_hits,ensure_ascii=False)
             prompt+=f'\n本次重写目标{target}字。完整输出最终成稿，删除所有内部约束、绝对化措辞和无依据效果，不要解释核验规则。保留必要的参数限定条件与引用。'
             prompt+='\n若只剩篇幅不足，保留现有安全段落，按营销目标补充生活场景、需求问题或选择条件；不得增加新参数、单位换算或体验结论。继续遵守所选营销目标与渠道表达，不统一改成到店核对清单。'
+            prompt+='\n无依据效果须整句删除，不能换同义词继续暗示它已实现这些效果。补充篇幅只写读者的生活、期待和开放问题，不能写机器带来的体感或效果。最终article.body仍必须是对象数组，每项严格为{"text":"段落文字","fact_ids":["K001"]}，不要返回字符串数组。'
     for index,image in enumerate(rep.images):
         image['position']='导语后' if index==0 else f"第{min(len(rep.article.get('body',[])),index)}段后" if rep.article.get('body') else '标题后'
         image['caption']=image['actual_view']

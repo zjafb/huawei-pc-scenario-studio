@@ -1,5 +1,5 @@
 {
-  "created_at": "2026-10-18T19:27:34.765642+08:00",
+  "created_at": "2026-10-18T19:38:48.505866+08:00",
   "purpose": "public source only; excludes real knowledge, approvals, credentials and run outputs",
   "configured_credentials_scanned": true,
   "files": [
@@ -25,8 +25,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 7099,
-      "sha256": "3dbe78385e1a1ffccafbfd92b70364bdc9a652096a47bd9af239f1a5e302eff9"
+      "bytes": 7274,
+      "sha256": "d74217be05bee422a5fc44c0379bea8d082b1ba749accfdc6cf8dc3f36b6eb89"
     },
     {
       "path": "app.py",
@@ -75,8 +75,8 @@
     },
     {
       "path": "app/compliance.py",
-      "bytes": 9622,
-      "sha256": "608ffb27cdd68b3a70000ce7c51696322227160bdd967343a354018276b53c8a"
+      "bytes": 9632,
+      "sha256": "579995572f1fb8f962afa69174e457808a4d791d7a8fe3b9410a42bddbee0fd7"
     },
     {
       "path": "app/evidence.py",
@@ -85,8 +85,8 @@
     },
     {
       "path": "app/full_pipeline.py",
-      "bytes": 31146,
-      "sha256": "2e2ad1ce4103f098a9870194cac39f548aff1ff3d170cf581b4cf4df64fa1f2b"
+      "bytes": 39617,
+      "sha256": "65cac82bdf81ea7fdd42ac6a5290a53d860b3ee34629acc877767e232e188751"
     },
     {
       "path": "app/images.py",
@@ -130,8 +130,8 @@
     },
     {
       "path": "docs/acceptance.md",
-      "bytes": 1885,
-      "sha256": "de1bf26d779810f8990ac2d051186d04f0da7c30012454d759337d0a3940f5a3"
+      "bytes": 1985,
+      "sha256": "a58d1e5e19e59fe72c1bd9be79bcd806684595895ba0db6513712ed36d0bd659"
     },
     {
       "path": "docs/deployment.md",
@@ -225,8 +225,8 @@
     },
     {
       "path": "tests/test_full_catalog.py",
-      "bytes": 15125,
-      "sha256": "338aacf6b212a7ca8a4af96042e847b70601ea5e7c551998e59e181b81ea625f"
+      "bytes": 18400,
+      "sha256": "ef4959a162e7e3c06a362238e87adbee8eaadf849e374680ff48bcb6050acd45"
     },
     {
       "path": "tests/test_images.py",
