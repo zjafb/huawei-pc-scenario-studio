@@ -48,3 +48,5 @@ html[data-motion=off] *,html[data-motion=off] *:before,html[data-motion=off] *:a
 .gradio-container>.main{padding:0!important}.header-tools{flex-shrink:0}.header-tools button{white-space:nowrap}.studio-brand{min-width:0}.studio-brand small{font-size:13px}.studio-header .brand-mark{flex-shrink:0}
 
 @media(max-width:760px){.result-heading{flex-direction:column;align-items:flex-start;gap:12px}.result-heading>span{white-space:nowrap}.studio-brand small{font-size:13px}.studio-header{padding:12px 0}.story-card h1{font-size:28px}}
+
+#studio-workspace{flex-wrap:nowrap!important}#brief-column{flex:0 0 33%!important;max-width:400px}#result-column{flex:1 1 0!important}@media(max-width:760px){#brief-column,#result-column{flex:0 0 auto!important;max-width:none;width:100%}}

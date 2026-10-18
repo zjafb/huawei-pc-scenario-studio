@@ -223,7 +223,9 @@ def _run_task(*,product='',audience='',scene='',platform='',free_text='',variant
     system+='\n标题、导语、CTA 不写具体数字参数，数字只放在有 fact_ids 的正文。不要讨论“保证、完美、最适合”等词，直接删掉这些措辞。不要把场景建议写成产品实测结论。'
     if channel=='moments':system+='本次只有一个核心主题、一个已检索事实，selected_points 必须恰好1项，不要输出多个主题。'
     if channel=='poster':system+='海报不是文章：body最多3个短行，每行只写一个事实；不要展开故事，不列长解释。'
-    pool=[{k:f[k] for k in ('id','category','value','caveat')} for f in facts]
+    # All real product conditions already live in value. Keep editorial
+    # instructions in the system message, away from the quotable fact data.
+    pool=[{k:f[k] for k in ('id','category','value')} for f in facts]
     prompt=f'''产品：{item['name']}\n资料级别：{item['level']}\n版本：{variant or '按原文区分，不混合配置'}\n系统：{os_name or '按原文区分'}
 受众：{audience or '根据场景推断，并列为假设'}\n场景：{scene_name}\n平台：{policy['label']}\n详略：{detail_level}
 用户说明：{free_text}\n修改要求：{extra_request}

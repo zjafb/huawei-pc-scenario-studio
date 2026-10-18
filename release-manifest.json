@@ -1,12 +1,12 @@
 {
-  "created_at": "2026-10-18T16:56:22.093081+08:00",
+  "created_at": "2026-10-18T16:59:49.431133+08:00",
   "purpose": "public source only; excludes real knowledge, approvals, credentials and run outputs",
   "configured_credentials_scanned": true,
   "files": [
     {
       "path": ".dockerignore",
-      "bytes": 219,
-      "sha256": "4ec2c5c43632b1c3441c03ed4497ff030a9073ad167970feb76c2d9f8cb63a05"
+      "bytes": 227,
+      "sha256": "f3c98a03a4a4cede74aff8d47b1373c185ca8fe9e10ec32354eca6b78a390e57"
     },
     {
       "path": ".env.example",
@@ -55,8 +55,8 @@
     },
     {
       "path": "app/assets/studio.css",
-      "bytes": 17495,
-      "sha256": "3c791b18b40e0f8ad3ba5fa326ec9e604c9e46ca16265e9c62fca2def8b4f441"
+      "bytes": 17737,
+      "sha256": "cac03970ef4c101b838aff5328299d9997d3cd40401188d7d5094c3186139a74"
     },
     {
       "path": "app/assets/studio.js",
@@ -85,8 +85,8 @@
     },
     {
       "path": "app/full_pipeline.py",
-      "bytes": 22115,
-      "sha256": "0bf4eb56e94f4100fa25d328d9c774a24245df4c4b11a50349791d550bd5ec98"
+      "bytes": 22254,
+      "sha256": "131389c1a41aa1bacd1a5a0cd2fdba9318bfe21be9d8ffaa2061237bb80d29ac"
     },
     {
       "path": "app/images.py",
