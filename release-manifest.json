@@ -1,5 +1,5 @@
 {
-  "created_at": "2026-10-18T17:23:56.810350+08:00",
+  "created_at": "2026-10-18T17:25:44.297986+08:00",
   "purpose": "public source only; excludes real knowledge, approvals, credentials and run outputs",
   "configured_credentials_scanned": true,
   "files": [
@@ -55,8 +55,8 @@
     },
     {
       "path": "app/assets/studio.css",
-      "bytes": 18391,
-      "sha256": "0dc00177cc1cee481b1fd6b852f042563393b0a71247b327e692ec5738f5b0cc"
+      "bytes": 18573,
+      "sha256": "5f32a516ba19d095f296ef77c35946b41609f42df81bcef141e5cc718e72e667"
     },
     {
       "path": "app/assets/studio.js",

@@ -59,3 +59,5 @@ html[data-motion=off] *,html[data-motion=off] *:before,html[data-motion=off] *:a
 .article-empty.article-error{min-height:210px;padding:32px 16px}
 .article-error h3{font-size:27px;margin:0 0 12px}
 @media(min-width:1700px){#studio-workspace{gap:38px}#brief-column{padding:30px!important}.studio-intro{padding:42px 0 30px}}
+
+.gradio-container{width:min(100%,1800px)!important}.gradio-container>.main{width:100%!important;max-width:none!important}body:has(.gradio-container){background:#F3F3ED!important}
