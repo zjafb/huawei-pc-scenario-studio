@@ -1,5 +1,5 @@
 {
-  "created_at": "2026-10-18T17:27:36.870914+08:00",
+  "created_at": "2026-10-18T19:23:39.985540+08:00",
   "purpose": "public source only; excludes real knowledge, approvals, credentials and run outputs",
   "configured_credentials_scanned": true,
   "files": [
@@ -25,8 +25,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 6869,
-      "sha256": "c43b45f5e8eb4043ef8147af45256f0c2f2c23daec334b01b945f85b63632e84"
+      "bytes": 7099,
+      "sha256": "3dbe78385e1a1ffccafbfd92b70364bdc9a652096a47bd9af239f1a5e302eff9"
     },
     {
       "path": "app.py",
@@ -55,8 +55,8 @@
     },
     {
       "path": "app/assets/studio.css",
-      "bytes": 18573,
-      "sha256": "5f32a516ba19d095f296ef77c35946b41609f42df81bcef141e5cc718e72e667"
+      "bytes": 18764,
+      "sha256": "e10b60287c1d0a68614481a6adb71a929d806e2c4cb0c246130ec6db6db7cd7b"
     },
     {
       "path": "app/assets/studio.js",
@@ -65,18 +65,18 @@
     },
     {
       "path": "app/catalog.py",
-      "bytes": 7910,
-      "sha256": "984e3fbe7a38015fbc36a546edf76c5beca601379cc8c6928ca78c04bab4a681"
+      "bytes": 8380,
+      "sha256": "71cefaf65e0856976424eeae69cd4c0b4de2c7527e79d501f89c1fc690a41687"
     },
     {
       "path": "app/channels.py",
-      "bytes": 3186,
-      "sha256": "64c339623c18d3a6d015679ee6b94001cfdfad39fdd7786b7e9862f80a7e71a5"
+      "bytes": 6197,
+      "sha256": "897f383cb83374b9bc192a2171482896daba492f08944f50d241ee891afa827c"
     },
     {
       "path": "app/compliance.py",
-      "bytes": 9614,
-      "sha256": "d0c711b6156116b52af857430c393b1efc8bdb833b935ce0cb3170e42719708b"
+      "bytes": 9622,
+      "sha256": "608ffb27cdd68b3a70000ce7c51696322227160bdd967343a354018276b53c8a"
     },
     {
       "path": "app/evidence.py",
@@ -85,8 +85,8 @@
     },
     {
       "path": "app/full_pipeline.py",
-      "bytes": 28240,
-      "sha256": "56abd201edcf2a5afa79b236deaef74332be9d55dfc3c6c07c28a1c23c225a6c"
+      "bytes": 30498,
+      "sha256": "990233d45cbfb44b81fead05ed557dc9251fe0b8be111ed8c35dcb9abfb6146a"
     },
     {
       "path": "app/images.py",
@@ -115,8 +115,8 @@
     },
     {
       "path": "app/ui.py",
-      "bytes": 21106,
-      "sha256": "e35f482eca7883a4d352b965fb4320fc6a762a67f52340f58abdb19e2d47c1db"
+      "bytes": 21699,
+      "sha256": "2eb97f5454f4689ce450092d6451f6d7cc0945f0f79764ededa42ff2276ee826"
     },
     {
       "path": "app/whitelist.py",
@@ -130,13 +130,13 @@
     },
     {
       "path": "docs/acceptance.md",
-      "bytes": 1426,
-      "sha256": "bb95268c391254cbcdc4c247b7981ebdff59b4c9366b48c2fdab4aceb88ec929"
+      "bytes": 1885,
+      "sha256": "de1bf26d779810f8990ac2d051186d04f0da7c30012454d759337d0a3940f5a3"
     },
     {
       "path": "docs/deployment.md",
-      "bytes": 3215,
-      "sha256": "57ad141c0b11efb25bcb06ea618ff38da0d7345f1d57fda95273b08eeb39dab4"
+      "bytes": 3272,
+      "sha256": "921100eed20f55b4e14785df8a42bd06288587942cca0b453d865e194f4a98e3"
     },
     {
       "path": "examples/whitelist/facts.json",
@@ -155,8 +155,8 @@
     },
     {
       "path": "prompts/system_prompt_v2.md",
-      "bytes": 2853,
-      "sha256": "3e5d893a327c3c97c44923077e712e425d113d33875b83b433d55e590722feb0"
+      "bytes": 3239,
+      "sha256": "0079e46767ae493167c44d850cfc21c4d54a59d0379875e7fcf0701d5940418b"
     },
     {
       "path": "requirements.txt",
@@ -200,8 +200,8 @@
     },
     {
       "path": "tests/test_completion_review.py",
-      "bytes": 8488,
-      "sha256": "1f459fbf0f15c46dc6f98906a7b4ada2df78d94a1d9d2a36d24965a2aad56c23"
+      "bytes": 8952,
+      "sha256": "d3dc94d2da47ddb9c8573c5c47b089a982c00f56b99442387a9f353a850b46f7"
     },
     {
       "path": "tests/test_compliance.py",
@@ -225,8 +225,8 @@
     },
     {
       "path": "tests/test_full_catalog.py",
-      "bytes": 11622,
-      "sha256": "33b21baf7a7a06c402c986635faaa138a033eef2493211aad4da903cc31f7a19"
+      "bytes": 14486,
+      "sha256": "8ddbb0981189b640ca560e4f52132809a627c43b90152d93aba850c6abc7c7ff"
     },
     {
       "path": "tests/test_images.py",
@@ -295,8 +295,8 @@
     },
     {
       "path": "tools/check_full_flow.py",
-      "bytes": 1832,
-      "sha256": "9ace53c2cada1be6c468db2d5eba28253cbba15e30389fb3bb3b9d22e82e21e0"
+      "bytes": 2115,
+      "sha256": "901defbec4132fb5a4ab1d382d87a796f4854ad3c1bcbbdc85930a6ea32a065a"
     },
     {
       "path": "tools/check_prompt_quality.py",

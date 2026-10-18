@@ -61,3 +61,4 @@ html[data-motion=off] *,html[data-motion=off] *:before,html[data-motion=off] *:a
 @media(min-width:1700px){#studio-workspace{gap:38px}#brief-column{padding:30px!important}.studio-intro{padding:42px 0 30px}}
 
 .gradio-container{width:min(100%,1800px)!important}.gradio-container>.main{width:100%!important;max-width:none!important}body:has(.gradio-container){background:#F3F3ED!important}
+#goal-info{border-left:2px solid #a6b18c;padding:0 10px!important;margin:-4px 0 6px!important}#goal-info p{font-size:14px;color:#52644F;line-height:1.8;margin:0}#marketing-goal{min-width:0}

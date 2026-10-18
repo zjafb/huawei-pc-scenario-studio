@@ -4,7 +4,7 @@ import json,re,copy
 from datetime import datetime
 from dataclasses import asdict
 from . import catalog,compliance
-from .channels import CHANNELS,SCENES,SCENE_GUIDANCE,channel_key
+from .channels import CHANNELS,SCENES,SCENE_GUIDANCE,GOALS,channel_key,goal_key,writing_brief
 from .pipeline import Report,FACT_MARK,_valid_output,_article_text,_check,to_text,STATUS_LABEL
 from connectors import ConnectorError,ModelScopeClient,IMAClient,LiveSourceReader
 
@@ -35,9 +35,9 @@ def _select_images(product,channel,count):
         if len(chosen)>=limit:break
     return chosen
 
-def _normalize(value):return re.sub(r'[\s,*®™]','',value).lower()
+def _normalize(value):return re.sub(r'[\s,*®™]','',value).lower().replace('英寸','寸').replace('克','g')
 
-def writing_facts(facts,channel,request):
+def writing_facts(facts,channel,request,goal='decision'):
     """Retrieve enough relevant source fields, rather than flooding a short channel with every specification."""
     curated=[]
     for fact in facts:
@@ -62,6 +62,8 @@ def writing_facts(facts,channel,request):
         if any(w in request for w in ('AI','小艺','鸿蒙','协同','分享','应用')):
             selected += [f for f in curated if f['category']=='特色应用']
         selected=selected or curated
+    if goal=='awareness' and channel in ('wechat','xhs'):
+        selected=selected[:3]
     return [{**f,'id':f'K{index+1:03d}'} for index,f in enumerate(selected)]
 
 def assertion_hits(text):
@@ -107,6 +109,10 @@ def _evaluate(rep,output,facts,policy,channel):
             else:paragraphs.append(block)
         rep.article['body']=paragraphs
     rep.strategy=output.get('strategy',{})
+    goal=rep.run.get('marketing_goal')
+    if goal in GOALS:
+        rep.scene_judgement['goal']=GOALS[goal]['label']
+        rep.strategy['marketing_goal']=GOALS[goal]['label']
     known={f['id']:f for f in facts}
     def canonical(fid):
         match=re.fullmatch(r'K0*(\d+)',fid)
@@ -153,7 +159,7 @@ def _evaluate(rep,output,facts,policy,channel):
         for claim in ('减少滚动次数','提升阅读效率','减轻肩背压力'):
             if claim in segment and claim not in blob:
                 hits.append(compliance.Hit('无依据效果',claim,'rewrite','原文参数不能证明该体验效果，请改为到店核对的建议',segment))
-        for match in re.finditer(r'减少(?:翻页|滚动|滑动)(?:次数)?|纵向.{0,8}(?:更充裕|更大|更多)',segment):
+        for match in re.finditer(r'减少(?:频繁)?(?:翻页|滚动|滑动)(?:的次数|次数)?|纵向.{0,8}(?:更充裕|更大|更多)|(?:同一页|一屏).{0,8}(?:看到|显示|容纳)更多|黄金平衡点|轻便到.{0,8}忘记|(?:既能|能)看清.{0,30}(?:图纸|图表|公式|表格)|(?:拎|背|拿).{0,8}(?:没那么吃力|毫不费力|很轻松)|(?:少些|减轻|减少).{0,6}(?:负担|压力)',segment):
             if match.group() not in blob:
                 hits.append(compliance.Hit('无依据效果',match.group(),'rewrite','屏幕参数不构成阅读效果的实证，请删除这一推导',segment))
         for number in compliance.UNIT_PATTERN.finditer(segment):
@@ -185,10 +191,18 @@ def _evaluate(rep,output,facts,policy,channel):
     if channel=='moments' and len(rep.strategy.get('selected_points',[]))!=1:issues.append('朋友圈保持一个核心主题')
     if channel=='poster' and len(body)>3:issues.append('海报最多3个短卖点')
     rep.checks.append(_check('渠道结构与篇幅',not issues,'；'.join(issues) if issues else f"{policy['label']} · {n}字 · {len(body)}段"))
+    goal_issues=[]
+    if goal in GOALS:
+        cta=rep.article.get('cta','')
+        actions={'enterprise':r'需求|岗位|软件|采购|咨询','awareness':r'收藏|留言|评论|了解|关注|分享|告诉|聊','store':r'到店|进店|门店','decision':r'核对|需求|选择|配置|清单|选购'}
+        if not re.search(actions[goal],cta):goal_issues.append('行动引导未体现所选营销目标：'+GOALS[goal]['label'])
+        if goal in ('awareness','decision','enterprise') and re.search(r'欢迎.{0,6}(?:到店|进店)|(?:快来|来|请|邀请|建议).{0,4}(?:到店|进店)|到店(?:体验|咨询|看看|了解)',cta):
+            goal_issues.append('当前目标不应以邀请到店收尾，请按所选目标设置行动引导')
+        rep.checks.append(_check('营销目标与行动引导',not goal_issues,'；'.join(goal_issues) if goal_issues else GOALS[goal]['label']+' · 行动引导一致'))
     enough=len(rep.images)>=policy['min_images']
     rep.image_shortage='' if enough else f"当前型号需{policy['min_images']}张，仅有{len(rep.images)}张可用图；未借用其他产品素材。"
     rep.checks.append(_check('型号配图',enough,rep.image_shortage or f'{len(rep.images)}张已核画面且原件指纹一致'))
-    if not citations or hits or issues:
+    if not citations or hits or issues or goal_issues:
         rep.status='blocked' if any(h.action=='block' for h in hits) else 'failed'
         rep.message='本次草稿未通过核验，未展示为可用稿；具体问题见核验结果。'
     else:
@@ -235,26 +249,28 @@ def run_task(*,on_progress=None,**kwargs):
     return rep
 
 def _run_task(*,product='',audience='',scene='',platform='',free_text='',variant='',os_name='',extra_request='',mode='cache',
-             previous_article=None,image_count=None,detail_level='详细',model_client=None,on_progress=None):
+             previous_article=None,image_count=None,detail_level='详细',marketing_goal='awareness',model_client=None,on_progress=None):
     rep=Report(mode=mode,mode_note=cache_mode_note() if mode!='live' else '实时模式：本次从 ima 读取所选产品原件，失败即停止，不自动切换。')
     rep.run={'started_at':datetime.now().astimezone().isoformat(),'input':dict(product=product,audience=audience,scene=scene,
-             platform=platform,free_text=free_text,variant=variant,os_name=os_name,extra_request=extra_request,image_count=image_count,detail_level=detail_level),
+             platform=platform,marketing_goal=marketing_goal,free_text=free_text,variant=variant,os_name=os_name,extra_request=extra_request,image_count=image_count,detail_level=detail_level),
              'revision_context_used':bool(previous_article),'stages':[]}
     if mode not in ('cache','live','test'):
         rep.message='未知运行模式';return rep
-    item=catalog.find_product(product);channel=channel_key(platform)
+    item=catalog.find_product(product);channel=channel_key(platform);goal=goal_key(marketing_goal)
     scene_name=SCENES.get(scene,scene)
     if not item:rep.questions.append('请从产品目录选择具体型号，不会自动猜型号。')
     if not channel:rep.questions.append('请选择公众号、小红书、门店朋友圈或门店海报。')
+    if not goal:rep.questions.append('请选择营销目标：企业咨询、种草了解、到店咨询或选购决策。')
     if not scene_name:rep.questions.append('请说明使用场景。')
     if rep.questions:
         rep.status='need_info';rep.message='先补齐任务信息再生成。';return rep
     if on_progress:on_progress(1,'任务范围已确认，正在读取并核对原文与图片')
     rep.product_name=item['name'];rep.run['source_level']=item['level'];policy=dict(CHANNELS[channel])
+    rep.run['marketing_goal']=goal
     if detail_level=='详细':policy['min_chars']={'wechat':1000,'xhs':500,'moments':140,'poster':70}[channel]
     rep.blocked_requests=[vars(h) for h in compliance.check_request('\n'.join((free_text,extra_request))) if free_text or extra_request]
     try:
-        facts=writing_facts(catalog.facts_for(item,variant,os_name),channel,'\n'.join((free_text,extra_request)))
+        facts=writing_facts(catalog.facts_for(item,variant,os_name),channel,'\n'.join((free_text,extra_request)),goal)
         rep.images=_select_images(item,channel,image_count)
         reader=_source_reader(item,rep.images,mode)
         if reader:
@@ -270,19 +286,20 @@ def _run_task(*,product='',audience='',scene='',platform='',free_text='',variant
         rep.message='资料读取失败：'+str(error);rep.run['failure_kind']=error.kind;return rep
     if not facts:rep.message='当前产品没有可引用的文字资料。';return rep
     system=(catalog.ROOT/'prompts/system_prompt_v2.md').read_text(encoding='utf-8')
-    system+='\n本次渠道规则：'+policy['instruction']
+    system+='\n本次写作任务：'+writing_brief(channel,goal)
     system+=f'\nJSON 的 body 数组必须至少有 {policy["paragraphs"]} 个独立元素，每个元素对应一段；不要把整篇文章塞进一个 text。'
     system+=f"\n本次篇幅硬约束：{policy['min_chars']}–{policy['max_chars']}字（不含图片图注和来源），不要只写参数。"
     target={'wechat':'1100–1400','xhs':'550–700','moments':'160–210','poster':'90–150'}[channel]
     system+=f'\n建议写到{target}字，标题、导语、正文、CTA和标签都计入总字数；避免逼近上限。FACT_POOL 的 caveat 是写作规则，不能原样抄进正文；只保留真实的参数条件和产品原文脚注。屏幕比例不得推导减少滚动、效率提升，不写任何无依据体验效果。'
     system+='\n标题、导语、CTA 不写具体数字参数，数字只放在有 fact_ids 的正文。不要讨论“保证、完美、最适合”等词，直接删掉这些措辞。不要把场景建议写成产品实测结论。'
     if channel=='moments':system+='本次只有一个核心主题、一个已检索事实，selected_points 必须恰好1项，不要输出多个主题。'
+    if channel=='xhs':system+='小红书采用4–5段，每段约70–110字；导语不超过60字，CTA不超过45字。只展开1–3个主题，不把所有检索参数都写进正文，不重复正文已有的限定条件。'
     if channel=='poster':system+='海报不是文章：body最多3个短行，每行只写一个事实；不要展开故事，不列长解释。'
     # All real product conditions already live in value. Keep editorial
     # instructions in the system message, away from the quotable fact data.
     pool=[{k:f[k] for k in ('id','category','value')} for f in facts]
     prompt=f'''产品：{item['name']}\n资料级别：{item['level']}\n版本：{variant or '按原文区分，不混合配置'}\n系统：{os_name or '按原文区分'}
-受众：{audience or '根据场景推断，并列为假设'}\n场景：{scene_name}\n平台：{policy['label']}\n详略：{detail_level}
+受众：{audience or '根据场景推断，并列为假设'}\n场景：{scene_name}\n平台：{policy['label']}\n营销目标（用户已选，不可变更）：{GOALS[goal]['label']}\n详略：{detail_level}
 用户说明：{free_text}\n修改要求：{extra_request}
 场景策略：{SCENE_GUIDANCE.get(scene_name,'以用户明确提供的场景为准，不补编产品能力。')}
 FACT_POOL（所有事实只从这里来，条件脚注必须保留）：\n{json.dumps(pool,ensure_ascii=False)}
@@ -299,7 +316,7 @@ FACT_POOL（所有事实只从这里来，条件脚注必须保留）：\n{json.
             client=client or model_client or ModelScopeClient()
             messages=[{'role':'system','content':system},{'role':'user','content':prompt}]
             rep.run['prompt_messages']=messages
-            output=client.chat_json(messages,max_tokens=6500 if channel=='wechat' else 5000 if channel=='xhs' else 3200,temperature=0.35)
+            output=client.chat_json(messages,max_tokens=6500 if channel=='wechat' else 5000 if channel=='xhs' else 3200,temperature=0.55 if channel=='xhs' else 0.45)
             rep.run['model']=client.model;rep.run['model_stats']=dict(getattr(client,'stats',{}))
             completion=getattr(client,'last_completion',None)
             if completion:rep.run.update(model_raw_output=completion.text,usage=completion.usage,model_request_id=completion.request_id)
@@ -335,7 +352,7 @@ FACT_POOL（所有事实只从这里来，条件脚注必须保留）：\n{json.
             prompt+='\n上次程序核验未通过，请纠正后重新输出完整JSON，不要重复错误：'+json.dumps(rep.checks,ensure_ascii=False)
             prompt+='\n具体风险词：'+json.dumps(rep.rewrite_hits,ensure_ascii=False)
             prompt+=f'\n本次重写目标{target}字。完整输出最终成稿，删除所有内部约束、绝对化措辞和无依据效果，不要解释核验规则。保留必要的参数限定条件与引用。'
-            prompt+='\n若只剩篇幅不足，保留现有安全段落，补充与受众有关的选购问题和到店核对步骤；不得增加新参数、单位换算或体验结论。'
+            prompt+='\n若只剩篇幅不足，保留现有安全段落，按营销目标补充生活场景、需求问题或选择条件；不得增加新参数、单位换算或体验结论。继续遵守所选营销目标与渠道表达，不统一改成到店核对清单。'
     for index,image in enumerate(rep.images):
         image['position']='导语后' if index==0 else f"第{min(len(rep.article.get('body',[])),index)}段后" if rep.article.get('body') else '标题后'
         image['caption']=image['actual_view']

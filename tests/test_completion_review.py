@@ -154,12 +154,18 @@ class CompletionUIReviewTests(unittest.TestCase):
         self.assertNotIn("SYNTHETIC-HIDDEN", result[3])
 
     def test_previous_article_only_used_when_identity_matches(self):
-        previous = {"key": ["D14", "标准版", "Windows", "cache"], "article": {"lead": "SYNTHETIC-PREVIOUS"}}
+        previous = {"key": ["D14", "标准版", "Windows", "cache", "awareness", "moments", "新生", "school"], "article": {"lead": "SYNTHETIC-PREVIOUS"}}
         _, same = self.invoke(Report(status="need_info"), previous=previous, extra="改写")
         self.assertEqual(previous["article"], same["previous_article"])
         result, changed = self.invoke(Report(status="need_info"), product="D16", previous=previous, extra="改写")
         self.assertIsNone(changed["previous_article"])
         self.assertIsNone(result[8])
+
+    def test_switching_marketing_goal_cannot_reuse_previous_draft(self):
+        previous={"key":["D14","标准版","Windows","cache","store","moments","新生","school"],"article":{"lead":"SYNTHETIC-PREVIOUS"}}
+        _,called=self.invoke(Report(status="need_info"),previous=previous,extra="改写")
+        self.assertIsNone(called['previous_article'])
+        self.assertEqual('awareness',called['marketing_goal'])
 
 
 if __name__ == "__main__":

@@ -50,7 +50,7 @@ UNSUPPORTED_BENEFITS = ["腾出空间", "省下空间", "放进随身包很轻�
 
 # 数字+单位：必须在已批准事实中找到。结构性数字（“三个”“两个”）不检查。
 UNIT_PATTERN = re.compile(
-    r"(\d+(?:\.\d+)?)\s*(小时|分钟|秒钟?|倍|%|GB|TB|Wh|W|kg|g|mm|英寸|nits|Hz|MHz|GHz|核|代)", re.I)
+    r"(\d+(?:\.\d+)?)\s*(小时|分钟|秒钟?|倍|%|GB|TB|Wh|W|kg|g|克|mm|英寸|寸|nits|Hz|MHz|GHz|核|代)", re.I)
 
 
 def _sentences(text: str) -> list[str]:

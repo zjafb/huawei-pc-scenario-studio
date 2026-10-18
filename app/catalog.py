@@ -38,7 +38,7 @@ def urls(text):
     return list(dict.fromkeys(re.findall(r'https://[^\s<>）)]+',text)))
 
 @lru_cache(maxsize=1)
-def products() -> list[dict]:
+def inventory() -> list[dict]:
     p1=KB_ROOT/'P1-产品参数库'
     rows=[];by_url={}
     for path in sorted(p1.rglob('产品事实.md')):
@@ -67,6 +67,16 @@ def products() -> list[dict]:
             rows.append(row)
     return rows
 
+@lru_cache(maxsize=1)
+def products() -> list[dict]:
+    """Selectable PCs require a complete specification and same-model imagery."""
+    return [p for p in inventory() if p['level']=='specification' and assets_for(p)]
+
+
+def image_count(product: dict) -> int:
+    return len({i['view_group'] for i in assets_for(product)})
+
+
 def find_product(value: str) -> dict | None:
     value=(value or '').strip()
     exact=[p for p in products() if value==p['id'] or value==p['name'] or value in p['aliases']]
@@ -79,7 +89,7 @@ def product_choices():
     def label(p):
         short=re.search(r'D\s+(14|16)',p['name'])
         alias=f" / D{short.group(1)}" if short else ''
-        return f"{p['name']}{alias} · {p['category']}"
+        return f"{p['name']}{alias} · {image_count(p)} 张原图"
     return [(label(p),p['id']) for p in products()]
 
 def _variant_block(content: str, variant: str) -> str:
@@ -138,7 +148,7 @@ def describe(value: str) -> str:
     product=find_product(value)
     if not product:return '请选择知识库中的具体产品。'
     try:
-        count=len(facts_for(product));images=assets_for(product)
+        count=len(facts_for(product));images=image_count(product)
         level='完整规格档案' if product['level']=='specification' else '产品发现卡：可写定位介绍，精确 SKU 参数待复核'
-        return f"**{product['name']}** · {level}\n\n可溯源事实章节 **{count}** · 已核画面素材 **{len(images)}** · 资料日期 **2026-10-17**\n\n来源：{product['url']}"
+        return f"**{product['name']}** · {level}\n\n可溯源事实章节 **{count}** · 本型号可用原图 **{images} 张**（同画面尺寸版本已合并） · 资料日期 **2026-10-17**\n\n图片按渠道上限插入，不足时用实际数量并提示，不借用其他型号。\n\n来源：{product['url']}"
     except ConnectorError as error:return str(error)

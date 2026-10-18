@@ -16,7 +16,7 @@ from PIL import Image
 
 from . import full_pipeline as pl
 from . import catalog
-from .channels import CHANNELS,SCENES as ALL_SCENES
+from .channels import CHANNELS,GOALS,goal_key,SCENES as ALL_SCENES
 from run_records import save_run
 from .studio import workflow, EMPTY_ARTICLE, studio_css, studio_js
 
@@ -144,15 +144,15 @@ def rich_article(rep):
 
 
 def run_ui(product, audience, scene, platform, free_text, variant, os_name, extra, mode_choice="cache", previous=None,
-           image_count=6,detail_level='详细',on_progress=None):
+           image_count=6,detail_level='详细',marketing_goal='awareness',on_progress=None):
     mode = "test" if TEST_MODE else ({"缓存": "cache", "实时": "live"}.get(mode_choice, mode_choice))
-    context_key = [product or "", variant or "", os_name or "", mode]
+    context_key = [product or "", variant or "", os_name or "", mode,goal_key(marketing_goal),platform or '',audience or '',scene or '']
     old_article = previous.get("article") if extra and isinstance(previous, dict) and previous.get("key") == context_key else None
     try:
         rep = pl.run_task(product=product or "", audience=audience or "", scene=scene or "",
                           platform=platform or "", free_text=free_text or "", variant=variant or "",
                           os_name=os_name or "", extra_request=extra or "", mode=mode, previous_article=old_article,
-                          image_count=image_count,detail_level=detail_level,**({'on_progress':on_progress} if on_progress else {}))
+                          image_count=image_count,detail_level=detail_level,marketing_goal=marketing_goal,**({'on_progress':on_progress} if on_progress else {}))
     except Exception as e:  # 页面不崩溃；错误如实显示，不产生假结果
         rep = pl.Report(status="failed", mode=mode, message=f"运行出错：{type(e).__name__}：{e}")
     gallery = []
@@ -256,7 +256,7 @@ def build() -> gr.Blocks:
             with gr.Column(scale=4,min_width=310,elem_id='brief-column'):
                 gr.HTML('<div class="section-heading"><p class="eyebrow">01 / THE BRIEF</p><h2>这次，写给谁？</h2><p>清晰的任务，是好内容的第一步。</p></div>')
                 product = gr.Dropdown(choices,label="选择产品（可输入型号关键词搜索）",value=default,filterable=True)
-                with gr.Accordion('查看产品资料范围',open=False):
+                with gr.Accordion('本型号原图与资料范围',open=False):
                     product_info=gr.Markdown(catalog.describe(default or ''),elem_id='product-info')
                 with gr.Row(elem_classes='pair-row'):
                     variant = gr.Dropdown(['按资料区分','标准版','SE 版','柔光版','非柔光版'],label="产品版本 / 配置",value='按资料区分',allow_custom_value=True,min_width=120)
@@ -264,6 +264,8 @@ def build() -> gr.Blocks:
                 with gr.Row(elem_classes='pair-row'):
                     audience = gr.Textbox(label="目标人群", placeholder="例如：大学新生",value='大学新生',min_width=120,lines=1,max_lines=2,elem_id='audience-field')
                     scene = gr.Dropdown(SCENES, label="使用场景", value="开学季",min_width=120)
+                marketing_goal=gr.Dropdown([(v['label'],k) for k,v in GOALS.items()],label='营销目标',value='awareness',elem_id='marketing-goal')
+                goal_info=gr.Markdown(GOALS['awareness']['brief'],elem_id='goal-info')
                 platform = gr.Radio(PLATFORMS, label="发布渠道", value="小红书",elem_id='channel-choice')
                 free_text = gr.Textbox(label="补充说明（可选，也可只写一句话需求）", lines=2)
                 with gr.Accordion('内容设置、修订与资料模式',open=False):
@@ -291,20 +293,21 @@ def build() -> gr.Blocks:
                     download=gr.File(label='下载文本',interactive=False)
                     html_download=gr.File(label='下载完整图文 HTML（含实际图片，可离线打开）',interactive=False)
         gr.HTML('<footer class="studio-footer"><span>SCENARIO STUDIO · 让创作有温度，让事实有来处。</span><span>来源、核验和素材限制，请在交付前一并查看。</span></footer>')
-        controls = [product, audience, scene, platform, free_text, variant, os_name, extra, mode_choice, btn,image_count,detail_level]
+        controls = [product, audience, scene, platform, free_text, variant, os_name, extra, mode_choice, btn,image_count,detail_level,marketing_goal]
         outputs = [banner, s1, s2, s3, s4, export, gallery, download, previous,html_download]
         def begin():
             cleared=list(reset_ui());cleared[0]='';cleared[3]='<div class="article-empty"><h3>正在组织这一次表达。</h3><p>执行节点会随实际进度更新；核验通过后呈现图文。</p></div>';cleared[8]=gr.skip()
             return (*[gr.update(interactive=False) for _ in controls],*cleared,workflow({'stage':0,'state':'active','detail':'任务已提交，正在检查输入。'}))
         event = btn.click(begin, outputs=[*controls,*outputs,progress], queue=False)
         event = event.then(run_ui_stream,
-                           [product, audience, scene, platform, free_text, variant, os_name, extra, mode_choice, previous,image_count,detail_level],
+                           [product, audience, scene, platform, free_text, variant, os_name, extra, mode_choice, previous,image_count,detail_level,marketing_goal],
                            [*outputs,progress], concurrency_limit=1,show_progress='hidden')
         event.then(lambda: [gr.update(interactive=True) for _ in controls], outputs=controls, queue=False)
-        for control in (product, audience, scene, platform, free_text, variant, os_name, mode_choice,image_count,detail_level):
+        for control in (product, audience, scene, platform, free_text, variant, os_name, mode_choice,image_count,detail_level,marketing_goal):
             def reset_studio():
                 cleared=list(reset_ui());cleared[3]=EMPTY_ARTICLE
                 return (*cleared,workflow())
             control.input(reset_studio, outputs=[*outputs,progress], queue=False)
         product.change(catalog.describe,inputs=product,outputs=product_info,queue=False)
+        marketing_goal.change(lambda value:GOALS.get(goal_key(value),{}).get('brief','请选择营销目标。'),inputs=marketing_goal,outputs=goal_info,queue=False)
     return demo

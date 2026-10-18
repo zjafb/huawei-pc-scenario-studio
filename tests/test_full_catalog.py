@@ -3,16 +3,23 @@ import copy,hashlib,io,json,unittest
 from unittest.mock import patch
 from PIL import Image
 from app import catalog,full_pipeline as flow
-from app.channels import CHANNELS
+from app.channels import CHANNELS,GOALS,writing_brief
 from app.ui import rich_article
 
 class FullCatalogueChecks(unittest.TestCase):
  @unittest.skipUnless((catalog.KB_ROOT/'全库文件清单_SHA256.csv').exists(),'Private supplied v7 materials are not in the public source package.')
- def test_all_55_products_including_shared_support_urls_are_distinct(self):
-  rows=catalog.products()
+ def test_inventory_is_retained_but_only_image_backed_pc_profiles_are_selectable(self):
+  rows=catalog.inventory()
   self.assertEqual(55,len(rows));self.assertEqual(55,len({r['id'] for r in rows}))
   self.assertTrue(any('MateDock 2' in p['name'] for p in rows));self.assertTrue(any('MateDock 3' in p['name'] for p in rows))
   self.assertEqual(10,sum(p['level']=='specification' for p in rows))
+  ready=catalog.products()
+  self.assertEqual(10,len(ready))
+  self.assertTrue(all(p['level']=='specification' and catalog.image_count(p)>0 for p in ready))
+  excluded=next(p for p in rows if 'MateDock 2' in p['name'])
+  self.assertIsNone(catalog.find_product(excluded['id']))
+  self.assertIsNone(catalog.find_product(excluded['name']))
+  self.assertEqual({p['id'] for p in ready},{v for label,v in catalog.product_choices()})
 
  @unittest.skipUnless((catalog.KB_ROOT/'全库文件清单_SHA256.csv').exists(),'Private v7 evidence absent.')
  def test_every_catalogue_fact_has_literal_quote_and_fingerprint(self):
@@ -71,6 +78,7 @@ class FullFlowChecks(unittest.TestCase):
     self.prompts=getattr(self,'prompts',[])+[copy.deepcopy(args[0])]
     return copy.deepcopy(output)
   client=Model()
+  kwargs.setdefault('marketing_goal','store')
   with patch.object(catalog,'find_product',return_value=self.item),patch.object(catalog,'facts_for',return_value=self.facts),patch.object(catalog,'assets_for',return_value=[self.image]),patch.object(catalog,'read_verified',return_value=(self.raw,self.image['sha256'])):
    report=flow.run_task(product='SYNTHETIC',scene='门店到访',platform=channel,detail_level='标准',model_client=client,**kwargs)
   return report,client
@@ -81,6 +89,32 @@ class FullFlowChecks(unittest.TestCase):
   self.assertEqual('SYNTHETIC Product',report.product_name)
   self.assertEqual(0,report.run['source_stats']['api_requests'])
   self.assertIn('data:image/png;base64',rich_article(report))
+
+ def test_awareness_cannot_silently_turn_into_store_conversion(self):
+  report,client=self.execute(self.output,marketing_goal='awareness')
+  self.assertEqual('failed',report.status)
+  self.assertFalse(next(c for c in report.checks if c['name']=='营销目标与行动引导')['ok'])
+  self.assertIn('营销目标（用户已选，不可变更）：种草了解',client.prompts[0][1]['content'])
+
+ def test_selected_goal_is_preserved_in_strategy_and_export_even_if_model_changes_it(self):
+  output=copy.deepcopy(self.output);output['scene_judgement']['goal']='到店咨询'
+  output['article']['cta']='留言说说你的日常场景，收藏这份关注点，继续了解具体配置。'
+  report,_=self.execute(output,marketing_goal='awareness')
+  self.assertEqual('qualified',report.status,report.checks)
+  self.assertEqual('种草了解',report.scene_judgement['goal'])
+  self.assertIn('种草了解',flow.to_text(report))
+
+ def test_unknown_goal_stops_before_model(self):
+  report,client=self.execute(self.output,marketing_goal='unknown')
+  self.assertEqual('need_info',report.status)
+  self.assertEqual(0,client.stats['model_requests'])
+
+ def test_each_goal_requires_its_own_next_action(self):
+  for goal,cta in [('enterprise','留言整理岗位和软件需求，作为进一步企业咨询的起点。'),('decision','核对自己的用途与配置清单，再做选购选择。'),('store','欢迎到店带上使用需求，亲手看一看实物。')]:
+   with self.subTest(goal=goal):
+    output=copy.deepcopy(self.output);output['article']['cta']=cta
+    report,_=self.execute(output,marketing_goal=goal)
+    self.assertEqual('qualified',report.status,report.checks)
 
  def test_unknown_numeric_claim_stays_blocked_after_two_repairs(self):
   bad=copy.deepcopy(self.output);bad['article']['body'][0]['text']+=' 续航 99 小时。'
@@ -163,5 +197,17 @@ class FullFlowChecks(unittest.TestCase):
   report,_=self.execute(bad)
   self.assertEqual('blocked',report.status)
   self.assertTrue(any(h['word']=='16:9' for h in report.rewrite_hits))
+
+ def test_inaccurate_screen_size_in_title_cannot_hide_behind_colloquial_unit(self):
+  bad=copy.deepcopy(self.output);bad['article']['title']='15寸屏幕如何选择'
+  report,_=self.execute(bad)
+  self.assertEqual('blocked',report.status)
+  self.assertTrue(any(h['word']=='15寸' for h in report.rewrite_hits))
+
+ def test_scene_tone_cannot_turn_specs_into_unsupported_reading_benefits(self):
+  bad=copy.deepcopy(self.output);bad['article']['body'][0]['text']+='同一页看到更多内容，减少频繁滚动的次数。'
+  report,_=self.execute(bad)
+  self.assertEqual('failed',report.status)
+  self.assertTrue(any(h['category']=='无依据效果' for h in report.rewrite_hits))
 
 if __name__=='__main__':unittest.main()
