@@ -129,10 +129,10 @@ class FullFlowChecks(unittest.TestCase):
     report,_=self.execute(output,marketing_goal=goal)
     self.assertEqual('qualified',report.status,report.checks)
 
- def test_unknown_numeric_claim_stays_blocked_after_two_repairs(self):
+ def test_unknown_numeric_claim_stays_blocked_after_one_targeted_repair(self):
   bad=copy.deepcopy(self.output);bad['article']['body'][0]['text']+=' 续航 99 小时。'
   report,client=self.execute(bad)
-  self.assertEqual('blocked',report.status);self.assertEqual(3,client.stats['model_requests'])
+  self.assertEqual('blocked',report.status);self.assertEqual(2,client.stats['model_requests'])
   self.assertNotIn('data:image',rich_article(report))
 
  def test_valid_numbers_do_not_override_an_unsupported_experience_claim(self):
@@ -142,9 +142,8 @@ class FullFlowChecks(unittest.TestCase):
   self.assertEqual('failed',report.status)
   self.assertNotIn('data:image',rich_article(report))
   self.assertFalse(next(c for c in report.checks if c['name']=='表达与证据复核')['ok'])
-  self.assertEqual(3,len(report.run['expression_reviews']))
-  self.assertNotIn(claim,client.prompts[2][1]['content'])
-  self.assertIn('屏幕尺寸不能证明专注效果',client.prompts[2][1]['content'])
+  self.assertEqual(1,len(report.run['expression_reviews']))
+  self.assertEqual(2,client.stats['model_requests'])
 
  def test_reviewer_cannot_invent_a_quote_and_mark_the_draft_reviewed(self):
   report,_=self.execute(self.output,editor_issues=[{'quote':'不在原稿里的句子','reason':'虚构问题'}])

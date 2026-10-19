@@ -1,5 +1,5 @@
 {
-  "created_at": "2026-10-18T19:38:48.505866+08:00",
+  "created_at": "2026-10-19T13:43:42.055984+08:00",
   "purpose": "public source only; excludes real knowledge, approvals, credentials and run outputs",
   "configured_credentials_scanned": true,
   "files": [
@@ -25,8 +25,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 7274,
-      "sha256": "d74217be05bee422a5fc44c0379bea8d082b1ba749accfdc6cf8dc3f36b6eb89"
+      "bytes": 7822,
+      "sha256": "4670ec9d0d16f9da8247ed2054576e3d29850f4c0021b25833b551368eeee7bb"
     },
     {
       "path": "app.py",
@@ -64,6 +64,11 @@
       "sha256": "fa029b67731d3e16d78aaf482f5221caa267eb48c42f9fe7065e5a3207653251"
     },
     {
+      "path": "app/brief.py",
+      "bytes": 4298,
+      "sha256": "0b29fd7f8c3cba420e5b13d403dc89c79d2da831b0d6fdcafcbec1bed3359ee2"
+    },
+    {
       "path": "app/catalog.py",
       "bytes": 8380,
       "sha256": "71cefaf65e0856976424eeae69cd4c0b4de2c7527e79d501f89c1fc690a41687"
@@ -85,8 +90,8 @@
     },
     {
       "path": "app/full_pipeline.py",
-      "bytes": 39617,
-      "sha256": "65cac82bdf81ea7fdd42ac6a5290a53d860b3ee34629acc877767e232e188751"
+      "bytes": 45918,
+      "sha256": "cb4e3254d9926dfc29616322e02109007a604ad02f4a8c2dbf6add973791b8c7"
     },
     {
       "path": "app/images.py",
@@ -97,6 +102,11 @@
       "path": "app/intake.py",
       "bytes": 6807,
       "sha256": "c13ca93b7883584b88894c72b4c3b5a60e40a082c25952ea4ad6d34ed1f2b0a2"
+    },
+    {
+      "path": "app/model_budget.py",
+      "bytes": 1580,
+      "sha256": "4dbcb733d62b6beb17c1112284ada186dad9efde24e917fc2addda41f0c2ef82"
     },
     {
       "path": "app/pipeline.py",
@@ -115,8 +125,8 @@
     },
     {
       "path": "app/ui.py",
-      "bytes": 21699,
-      "sha256": "2eb97f5454f4689ce450092d6451f6d7cc0945f0f79764ededa42ff2276ee826"
+      "bytes": 22559,
+      "sha256": "c3aafb1f1394db70c59dc217b3f7bf1a5fb36ed88759bc8a679632992fe491db"
     },
     {
       "path": "app/whitelist.py",
@@ -130,8 +140,8 @@
     },
     {
       "path": "docs/acceptance.md",
-      "bytes": 1985,
-      "sha256": "a58d1e5e19e59fe72c1bd9be79bcd806684595895ba0db6513712ed36d0bd659"
+      "bytes": 2325,
+      "sha256": "e04cb8a24a1250c3943b1e2f07029593a99b89997c58bf1440e2f5930fee0508"
     },
     {
       "path": "docs/deployment.md",
@@ -225,8 +235,8 @@
     },
     {
       "path": "tests/test_full_catalog.py",
-      "bytes": 18400,
-      "sha256": "ef4959a162e7e3c06a362238e87adbee8eaadf849e374680ff48bcb6050acd45"
+      "bytes": 18315,
+      "sha256": "566c2800558bfeed967dbc738287bfa14f4dd0a45c053cbfe747ed90fcd12e1e"
     },
     {
       "path": "tests/test_images.py",
@@ -279,6 +289,11 @@
       "sha256": "a6fe198531d811e93a34f7be0aeeb518207786957551b50f183d106ec04f6a22"
     },
     {
+      "path": "tests/test_user_controls.py",
+      "bytes": 8129,
+      "sha256": "c89327a876c1b6bc5f16dd619e905269fc14265967ef3388c1b49a826e6c86a6"
+    },
+    {
       "path": "tests/test_whitelist.py",
       "bytes": 6611,
       "sha256": "920f0e563edfe1e7713adf2419d6300a55efc6cffac539ea451d26c81d9d110f"
@@ -317,6 +332,11 @@
       "path": "tools/check_release.py",
       "bytes": 5025,
       "sha256": "88b59692ee1ceae2509ed2a712da323bd079ca7c253e5ca9dd020fd573e82b62"
+    },
+    {
+      "path": "tools/check_user_brief.py",
+      "bytes": 2473,
+      "sha256": "96c564d87131a85d2a4bc1ea5885e7bbe9c5346aff33a6b20072b28bdf92d4f8"
     },
     {
       "path": "tools/configure-ima.ps1",

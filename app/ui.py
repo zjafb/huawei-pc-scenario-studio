@@ -47,6 +47,12 @@ def _banner(rep: pl.Report) -> str:
         parts.append(f'<p>⚠ {html.escape(rep.image_shortage)}</p>')
     if rep.message:
         parts.append(f'<div style="margin-top:6px">{html.escape(rep.message)}</div>')
+    policy=rep.run.get('content_policy')
+    if policy:
+        applied=f"本次设置：{rep.run.get('input',{}).get('detail_level','标准')} · {policy['min_chars']}–{policy['max_chars']}字 · {len(rep.images)}张图"
+        if rep.run.get('revision_context_used'):applied+=' · 已基于上一稿修订'
+        if rep.run.get('model_calls'):applied+=f" · 模型调用{len(rep.run['model_calls'])}/{rep.run.get('model_request_limit',4)}次"
+        parts.append('<p>'+html.escape(applied)+'</p>')
     if rep.questions:
         qs = "".join(f"<li>{html.escape(q)}</li>" for q in rep.questions)
         parts.append(f"<ol>{qs}</ol>")
@@ -187,7 +193,7 @@ def run_ui(product, audience, scene, platform, free_text, variant, os_name, extr
         html_file=str(html_destination)
     except OSError:
         rep.notes_for_review.append("下载文件写入失败，可以复制文本。")
-    next_state = {"key": context_key, "article": rep.article} if rep.status in ("qualified", "restricted") else None
+    next_state = {"key": context_key, "article": rep.article,"approved":rep.status in ('qualified','restricted')} if rep.article else previous if isinstance(previous,dict) and previous.get('key')==context_key else None
     if on_progress:on_progress({'stage':3 if rep.status in ('qualified','restricted') else -1,'state':rep.status,'detail':rep.message})
     return (_banner(rep), _section(rep, 1), _section(rep, 2), rich_article(rep), _section(rep, 4),
             export_text, gallery, export_file, next_state,html_file)
@@ -196,6 +202,12 @@ def run_ui(product, audience, scene, platform, free_text, variant, os_name, extr
 def reset_ui():
     """Changing task context invalidates displayed evidence, without an API call."""
     return ("<div style='padding:12px'>需求已变化，请重新生成并核验。</div>", "", "", "", "", "", [], None, None,None)
+
+
+def reset_studio(keep_revision=False):
+    cleared=list(reset_ui());cleared[3]=EMPTY_ARTICLE
+    if keep_revision:cleared[8]=gr.skip()
+    return (*cleared,workflow())
 
 
 STORY_CSS='''
@@ -255,7 +267,7 @@ def build() -> gr.Blocks:
         with gr.Row(elem_id='studio-workspace'):
             with gr.Column(scale=4,min_width=310,elem_id='brief-column'):
                 gr.HTML('<div class="section-heading"><p class="eyebrow">01 / THE BRIEF</p><h2>这次，写给谁？</h2><p>清晰的任务，是好内容的第一步。</p></div>')
-                product = gr.Dropdown(choices,label="选择产品（可输入型号关键词搜索）",value=default,filterable=True)
+                product = gr.Dropdown(choices,label="选择产品",value=default,filterable=False,allow_custom_value=False,elem_id='product-choice')
                 with gr.Accordion('本型号原图与资料范围',open=False):
                     product_info=gr.Markdown(catalog.describe(default or ''),elem_id='product-info')
                 with gr.Row(elem_classes='pair-row'):
@@ -269,9 +281,9 @@ def build() -> gr.Blocks:
                 platform = gr.Radio(PLATFORMS, label="发布渠道", value="小红书",elem_id='channel-choice')
                 free_text = gr.Textbox(label="补充说明（可选，也可只写一句话需求）", lines=2)
                 with gr.Accordion('内容设置、修订与资料模式',open=False):
-                    detail_level=gr.Radio(['标准','详细'],label='内容详略',value='详细')
+                    detail_level=gr.Radio(['标准','详细'],label='内容详略（影响篇幅；补充说明可指定字数）',value='详细')
                     image_count=gr.Slider(1,6,value=6,step=1,label='期望图片数（受渠道上限和实际素材限制）')
-                    extra = gr.Textbox(label="修订要求（可选，例如删段、换卖点）", lines=2)
+                    extra = gr.Textbox(label="修订要求（修改上一稿，例如换标题、删段、不要表情）", lines=2)
                     mode_choice = gr.Dropdown([("本地 v7 资料（不请求 ima，未核远端最新）", "cache"),
                                                ("实时（本次读取 ima，失败即停止）", "live")],
                                               label="运行模式（显式选择，不会自动切换）", value="cache")
@@ -303,11 +315,10 @@ def build() -> gr.Blocks:
                            [product, audience, scene, platform, free_text, variant, os_name, extra, mode_choice, previous,image_count,detail_level,marketing_goal],
                            [*outputs,progress], concurrency_limit=1,show_progress='hidden')
         event.then(lambda: [gr.update(interactive=True) for _ in controls], outputs=controls, queue=False)
-        for control in (product, audience, scene, platform, free_text, variant, os_name, mode_choice,image_count,detail_level,marketing_goal):
-            def reset_studio():
-                cleared=list(reset_ui());cleared[3]=EMPTY_ARTICLE
-                return (*cleared,workflow())
+        for control in (product, audience, scene, platform, variant, os_name, mode_choice,marketing_goal):
             control.input(reset_studio, outputs=[*outputs,progress], queue=False)
+        for control in (free_text,image_count,detail_level,extra):
+            control.input(lambda:reset_studio(keep_revision=True),outputs=[*outputs,progress],queue=False)
         product.change(catalog.describe,inputs=product,outputs=product_info,queue=False)
         marketing_goal.change(lambda value:GOALS.get(goal_key(value),{}).get('brief','请选择营销目标。'),inputs=marketing_goal,outputs=goal_info,queue=False)
     return demo
