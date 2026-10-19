@@ -45,4 +45,13 @@ class StudioChecks(unittest.TestCase):
         self.assertNotIn('setInterval',js);self.assertNotIn('setTimeout',js)
         self.assertIn('aria-pressed',js)
 
+    def test_verification_start_is_not_final_completion(self):
+        checking=workflow({'stage':3,'state':'active','detail':'核验仍在执行'})
+        self.assertNotIn('--progress:100%',checking)
+        self.assertEqual(3,checking.count('flow-node done'))
+        self.assertEqual(1,checking.count('flow-node active'))
+        complete=workflow({'stage':3,'state':'qualified','detail':'实际核验通过'})
+        self.assertIn('--progress:100%',complete)
+        self.assertEqual(4,complete.count('flow-node done'))
+
 if __name__=='__main__':unittest.main()
