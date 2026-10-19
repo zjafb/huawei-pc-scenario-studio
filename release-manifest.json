@@ -1,5 +1,5 @@
 {
-  "created_at": "2026-10-19T13:43:42.055984+08:00",
+  "created_at": "2026-10-19T16:41:06.845482+08:00",
   "purpose": "public source only; excludes real knowledge, approvals, credentials and run outputs",
   "configured_credentials_scanned": true,
   "files": [
@@ -25,8 +25,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 7822,
-      "sha256": "4670ec9d0d16f9da8247ed2054576e3d29850f4c0021b25833b551368eeee7bb"
+      "bytes": 8368,
+      "sha256": "4b5c96f960341f79146cf2bea2fb6aaf9f35e07be90124effe7bc461484b6b3f"
     },
     {
       "path": "app.py",
@@ -90,8 +90,8 @@
     },
     {
       "path": "app/full_pipeline.py",
-      "bytes": 45918,
-      "sha256": "cb4e3254d9926dfc29616322e02109007a604ad02f4a8c2dbf6add973791b8c7"
+      "bytes": 47875,
+      "sha256": "ed901105eb8cac72aee2b4cb497baeaae8b34a0ece02b4a0cbca135888409e11"
     },
     {
       "path": "app/images.py",
@@ -105,8 +105,8 @@
     },
     {
       "path": "app/model_budget.py",
-      "bytes": 1580,
-      "sha256": "4dbcb733d62b6beb17c1112284ada186dad9efde24e917fc2addda41f0c2ef82"
+      "bytes": 2588,
+      "sha256": "2166e28aa011ca7bace1abd091914cc4ac1a34a472be2990798dcbdb8dc24ca7"
     },
     {
       "path": "app/pipeline.py",
@@ -125,8 +125,8 @@
     },
     {
       "path": "app/ui.py",
-      "bytes": 22559,
-      "sha256": "c3aafb1f1394db70c59dc217b3f7bf1a5fb36ed88759bc8a679632992fe491db"
+      "bytes": 22733,
+      "sha256": "c5a743e590dacb85d86789a3bb854ceadac71cff6d4de9f2193c5c1162d1d5eb"
     },
     {
       "path": "app/whitelist.py",
@@ -135,8 +135,8 @@
     },
     {
       "path": "connectors.py",
-      "bytes": 17434,
-      "sha256": "2705905877189112755974842b89fde9d38238eeb2c01df2e3fdd367a7e7589c"
+      "bytes": 19522,
+      "sha256": "16b771250dc95ff704e44c3cf8ce63a2afe9525a1aee264f2c1c0ceb0a8149e3"
     },
     {
       "path": "docs/acceptance.md",
@@ -225,8 +225,8 @@
     },
     {
       "path": "tests/test_connectors.py",
-      "bytes": 7001,
-      "sha256": "b199d9e987e3a39ccc1ce12d1508d354483cd5b8b024e66f0400314428373670"
+      "bytes": 8938,
+      "sha256": "008ecff58e628c94bf99b1230e86103e0b0245e407d4857dbc43d11c18aa3308"
     },
     {
       "path": "tests/test_evidence_review.py",
@@ -257,6 +257,11 @@
       "path": "tests/test_live_sources.py",
       "bytes": 3700,
       "sha256": "153779279267bf2996eabd9de7f9e695badde090a4741bb7b3fc29198be6010e"
+    },
+    {
+      "path": "tests/test_model_limits.py",
+      "bytes": 3812,
+      "sha256": "5fab42ba4da8e250de358ae27bf651eeae2f5cf2d10f632cfbd0ae282e8b5078"
     },
     {
       "path": "tests/test_pipeline.py",
@@ -290,8 +295,8 @@
     },
     {
       "path": "tests/test_user_controls.py",
-      "bytes": 8129,
-      "sha256": "c89327a876c1b6bc5f16dd619e905269fc14265967ef3388c1b49a826e6c86a6"
+      "bytes": 8567,
+      "sha256": "8a164d942872c3251f348c35c5c85a2cd0b8e379fa0b8e23ffe07343ee6439fa"
     },
     {
       "path": "tests/test_whitelist.py",

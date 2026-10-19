@@ -72,6 +72,15 @@ class UserControls(unittest.TestCase):
   report,_=self.fixture.execute(self.fixture.output,image_count=1)
   self.assertEqual('qualified',report.status);self.assertEqual('',report.image_shortage)
 
+ def test_reviewer_receives_product_and_original_source_provenance(self):
+  import json
+  report,client=self.fixture.execute(self.fixture.output)
+  review=json.loads(client.prompts[1][1]['content'])
+  self.assertEqual(report.product_name,review['product_name'])
+  source=review['source_facts'][0]
+  for key in ('product_name','source_title','source_sha256','section','quote'):
+   self.assertEqual(self.fixture.facts[0][key],source[key])
+
  def test_natural_store_invitation_is_not_rejected_for_missing_exact_keyword(self):
   output=copy.deepcopy(self.fixture.output);output['article']['cta']='带上您的需求，来店亲手体验。'
   report,_=self.fixture.execute(output)

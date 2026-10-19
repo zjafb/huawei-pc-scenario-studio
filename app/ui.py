@@ -38,6 +38,8 @@ OSES = ["", "Windows", "Linux"]
 
 def _banner(rep: pl.Report) -> str:
     label, color = STATUS_STYLE.get(rep.status, (rep.status, "#444"))
+    if rep.status=='failed' and rep.run.get('failure_kind') in ('quota','rate_limit','token_rate_limit'):
+        label='模型服务受限'
     mode = {"test": "测试（非真实运行结果）", "cache": "缓存", "live": "实时"}.get(rep.mode, "未知")
     parts = [f'<div class="result-banner" style="--status-color:{color}">'
              f'<strong>{label}</strong> · 模式：{mode}']
@@ -57,7 +59,7 @@ def _banner(rep: pl.Report) -> str:
         qs = "".join(f"<li>{html.escape(q)}</li>" for q in rep.questions)
         parts.append(f"<ol>{qs}</ol>")
     if rep.status in ('failed','blocked'):
-        failed=[c for c in rep.checks if not c.get('ok')]
+        failed=[c for c in rep.checks if not c.get('ok') and c.get('detail')!=rep.message]
         if failed:
             parts.append('<ul>'+''.join('<li>'+html.escape(c['name']+'：'+c['detail'])+'</li>' for c in failed[:4])+'</ul>')
     return "".join(parts)+'</div>'

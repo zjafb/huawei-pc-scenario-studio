@@ -18,10 +18,41 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 
 class ConnectorError(RuntimeError):
-    def __init__(self, message: str, *, kind: str = "request_failed", code: Any = None):
+    def __init__(self, message: str, *, kind: str = "request_failed", code: Any = None,
+                 provider_code: str | None = None, retry_after: float | None = None):
         super().__init__(message)
         self.kind = kind
         self.code = code
+        self.provider_code = provider_code
+        self.retry_after = retry_after
+
+
+def _service_error(data: Any, status: int | None, secrets: tuple[str, ...],
+                   retry_after: str | None = None) -> ConnectorError:
+    """Separate recoverable throughput limits from exhausted account quotas."""
+    message = _redact(_message(data, f"HTTP {status}" if status else "模型服务返回失败。"), secrets)
+    detail = data.get("error") if isinstance(data, dict) else None
+    detail = detail if isinstance(detail, dict) else data if isinstance(data, dict) else {}
+    provider_code = _redact(str(detail.get("code") or detail.get("type") or ""), secrets)
+    signal = (provider_code + " " + message).lower()
+    if any(s in signal for s in ("free allocated quota", "budgetlimitexceeded", "arrearage",
+                                 "billoverdue", "额度耗尽", "额度已用尽", "欠费", "daily limit", "daily quota")):
+        kind = "quota"
+    elif any(s in signal for s in ("allocationquota", "exceeded your current quota", "allocated quota exceeded",
+                                   "token rate", "tokens per minute", "tokens per second")):
+        kind = "token_rate_limit"
+    elif "insufficient_quota" in signal:
+        kind = "quota"
+    elif status == 429 or any(s in signal for s in ("throttling", "rate limit", "rate_limit", "rate increased too quickly", "too many requests")):
+        kind = "rate_limit"
+    else:
+        kind = "http_error" if status else "api_error"
+    try:
+        delay = float(retry_after) if retry_after is not None else None
+        if delay is not None and (not 0 <= delay <= 120): delay = None
+    except (ValueError, TypeError):
+        delay = None
+    return ConnectorError(message, kind=kind, code=status, provider_code=provider_code or None, retry_after=delay)
 
 
 class _NoRedirect(HTTPRedirectHandler):
@@ -76,8 +107,8 @@ def _request_json(url: str, headers: dict[str, str], body: dict | None,
             error = json.loads(exc.read(65536).decode("utf-8", errors="replace"))
         except (ValueError, UnicodeError):
             error = {}
-        message = _redact(_message(error, f"HTTP {exc.code}"), secrets)
-        raise ConnectorError(message, kind="http_error", code=exc.code) from None
+        raise _service_error(error, exc.code, secrets,
+                             exc.headers.get("Retry-After") if exc.headers else None) from None
     except (URLError, TimeoutError, OSError) as exc:
         raise ConnectorError(f"网络请求失败（{type(exc).__name__}）。", kind="network_error") from None
     except (ValueError, UnicodeError):
@@ -123,6 +154,8 @@ class ModelScopeClient:
             payload,
             self.timeout, (self._token,),
         )
+        if data.get("error") or (data.get("code") not in (None, 0, "0", 200, "200") and not data.get("choices")):
+            raise _service_error(data, None, (self._token,))
         choices = data.get("choices") or []
         text = choices[0].get("message", {}).get("content") if choices else None
         if not isinstance(text, str) or not text.strip():

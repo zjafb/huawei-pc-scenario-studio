@@ -61,6 +61,34 @@ class ConnectorTests(unittest.TestCase):
         self.assertEqual(error.exception.code, 403)
 
     @patch("connectors._open_request")
+    def test_model_limits_are_classified_without_assuming_account_exhaustion(self, open_request):
+        cases = [
+            ("insufficient_quota", "You exceeded your current quota, please check your plan and billing details.", "token_rate_limit"),
+            ("Throttling.AllocationQuota", "Allocated quota exceeded, please increase your quota limit.", "token_rate_limit"),
+            ("Throttling.BurstRate", "Request rate increased too quickly.", "rate_limit"),
+            ("insufficient_quota", "Account quota exhausted", "quota"),
+            ("BudgetLimitExceeded", "Budget has been exhausted", "quota"),
+            ("Throttling.AllocationQuota", "Free allocated quota exceeded.", "quota"),
+        ]
+        for code, message, kind in cases:
+            with self.subTest(code=code, message=message):
+                body = io.BytesIO(json.dumps({"error": {"code": code, "message": message}}).encode())
+                open_request.side_effect = HTTPError("https://example.invalid", 429, "limit", {"Retry-After": "7"}, body)
+                with self.assertRaises(ConnectorError) as error:
+                    self.model().chat([{"role": "user", "content": "test"}])
+                self.assertEqual(kind, error.exception.kind)
+                self.assertEqual(429, error.exception.code)
+                self.assertEqual(code, error.exception.provider_code)
+                self.assertEqual(7, error.exception.retry_after)
+
+    @patch("connectors._open_request")
+    def test_error_in_successful_http_response_keeps_provider_diagnosis(self, open_request):
+        open_request.return_value = Response({"error": {"code": "Throttling.BurstRate", "message": "Request rate increased too quickly."}})
+        with self.assertRaises(ConnectorError) as error:
+            self.model().chat([{"role": "user", "content": "test"}])
+        self.assertEqual("rate_limit", error.exception.kind)
+
+    @patch("connectors._open_request")
     def test_base_lookup_accepts_real_field_names(self, open_request):
         open_request.return_value = ok({"info_list": [{"kb_name": "target", "kb_id": "test-base"}]})
         self.assertEqual(self.ima().find_base("target")["kb_id"], "test-base")

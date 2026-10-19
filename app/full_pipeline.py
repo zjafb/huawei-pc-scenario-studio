@@ -320,9 +320,12 @@ quote只逐字摘录最小的具体错误断言，reason说明哪个本型号结
     policy=rep.run.get('content_policy') or content_policy(channel,rep.run.get('input',{}).get('detail_level','标准'))
     instruction+='\n用户明确的标题、内容重点、语气、表情/标签设置和修订要求优先于渠道的默认写法。审稿和实际编辑必须保留这些要求，不擅自改回通用模板。只审查当前稿件，用户需求中的禁用示例不是稿件事实。'
     instruction+='\n本次只审 product_claims 列出的产品断言。copy仅用于理解上下文，不能把其余生活背景或普通咨询建议扩张成新问题。“不同软件的环境要求不同”“携带清单到店核对”属于正常选购建议；不要求知识库为日常建议提供实测证明。用户具体格式要求另由程序严格校验。'
+    instruction+='\nsource_facts已由程序按当前product_name绑定产品原件并核对文件指纹；product_name、source_title、section及source_sha256提供归属信息，quote保留原文。结合这些来源字段判断参数归属，不要求每条参数原文再次重复型号名称。若来源存在实际冲突或不能支持稿件结论，仍应报告。'
+    instruction+='\n产品事实以本次source_facts为依据，禁止用模型记忆、旧版本印象或“通常搭载”否定当前原件；若认定资料之间冲突，必须指出本次所给来源中的具体冲突，不得凭空猜测。编辑不得把原文的系统、型号、版本或参数换成你记忆中的值。无法确认的事实只能提示待确认，不能自行修正为可用事实。'
     if revise:
         instruction+='\n若issues非空，必须同时返回revised_article完整对象（不能为null）：按原article的title/lead/body（text与fact_ids对象数组）/cta/tags结构实际编辑，不是仅列建议。删除无依据效果或改成条件化的核对建议，不用同义词继续暗示效果。保留用户指定标题、重点、格式和引用，总字数必须落在本次范围内。不要添加新事实或免费服务。issues为空时revised_article可为null。'
-    result=client.chat_json([{'role':'system','content':instruction},{'role':'user','content':json.dumps({'channel':CHANNELS[channel]['label'],'goal':GOALS[goal]['label'],'channel_rules':writing_brief(channel,goal),'user_brief':rep.run.get('input',{}),'resolved_settings':policy,'length_min':policy['min_chars'],'length_max':policy['max_chars'],'body_min':policy['paragraphs'],'source_facts':[{k:f[k] for k in ('id','category','quote')} for f in facts],'product_claims':claims,'article':rep.article,'copy':text},ensure_ascii=False)}],max_tokens=6500 if revise and channel=='wechat' else 4000 if revise else 1800,temperature=0.1)
+    source_facts=[{k:f[k] for k in ('id','category','quote','product_name','source_title','source_file','source_url','source_sha256','section') if k in f} for f in facts]
+    result=client.chat_json([{'role':'system','content':instruction},{'role':'user','content':json.dumps({'product_name':rep.product_name,'channel':CHANNELS[channel]['label'],'goal':GOALS[goal]['label'],'channel_rules':writing_brief(channel,goal),'user_brief':rep.run.get('input',{}),'resolved_settings':policy,'length_min':policy['min_chars'],'length_max':policy['max_chars'],'body_min':policy['paragraphs'],'source_facts':source_facts,'product_claims':claims,'article':rep.article,'copy':text},ensure_ascii=False)}],max_tokens=6500 if revise and channel=='wechat' else 4000 if revise else 1800,temperature=0.1)
     rep.run.setdefault('expression_review_responses',[]).append(copy.deepcopy(result))
     if not isinstance(result,dict) or not isinstance(result.get('issues'),list):
         raise ConnectorError('表达复核未返回有效问题清单，未放行稿件。',kind='invalid_model_json')
@@ -344,7 +347,8 @@ quote只逐字摘录最小的具体错误断言，reason说明哪个本型号结
 
 def compose(rep,system,prompt,facts,policy,channel,goal,model_client,on_progress):
     """Write once, repair rules once, then review once and audit edits once."""
-    try:client=BudgetedModel(model_client or ModelScopeClient(),rep.run)
+    try:client=BudgetedModel(model_client or ModelScopeClient(),rep.run,
+                            on_wait=lambda message:on_progress(2,message) if on_progress else None)
     except ConnectorError as error:
         rep.status='failed';rep.message=str(error);rep.run['failure_kind']=error.kind
         rep.checks=[_check('模型配置',False,rep.message)];return
@@ -400,7 +404,17 @@ def compose(rep,system,prompt,facts,policy,channel,goal,model_client,on_progress
                     client.purpose='编辑后最终复核'
                     review_expression(client,rep,facts,channel,goal,revise=False)
     except ConnectorError as error:
-        rep.status='failed';rep.message='本次已停止：'+str(error);rep.run['failure_kind']=error.kind
+        rep.status='failed';rep.run['failure_kind']=error.kind
+        rep.run['model_error']={'message':str(error),'http_status':error.code,'provider_code':error.provider_code,'stage':client.purpose}
+        guidance={
+            'token_rate_limit':'模型服务的 Token 吞吐额度暂时受限，本次已停止。请稍后重试；若持续出现，请检查当前模型的限流和可用额度。',
+            'rate_limit':'模型服务请求过于频繁，本次已停止。请稍后重试，避免连续提交。',
+            'quota':'模型服务的可用额度或账户预算已耗尽，本次已停止。请检查服务平台的额度、预算或账户状态，恢复后再生成。',
+        }
+        rep.message=guidance.get(error.kind,'本次已停止：'+str(error))
+        if error.kind in guidance:
+            rep.message+=' 本地 v7 资料缓存只提供原文和图片，写作与复核仍需调用在线模型。'
+            rep.message+=' 停止阶段：'+client.purpose+'。'
         rep.checks.append(_check('模型调用',False,rep.message))
     finally:
         rep.run['model']=client.model;rep.run['model_stats']=dict(getattr(client,'stats',{}))
